@@ -1,0 +1,41 @@
+{
+	"schemaVersion": 1,
+	"id": "the-spell",
+	"version": "${version}",
+	"name": "The Spell",
+	"description": "When the spell descend everything went into chaos, sharpen your sword and ready your will to survive",
+	"authors": [
+		"Fexolion :D"
+	],
+	"contact": {
+		"homepage": "https://github.com/Pennsann",
+		"sources": "https://github.com/FabricMC/fabric-example-mod"
+	},
+	"license": "CC0-1.0",
+	"icon": "assets/the-spell/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"ss.spellid.TheSpell"
+		],
+		"client": [
+			"ss.spellid.TheSpellClient"
+		],
+		"fabric-datagen": [
+			"ss.spellid.TheSpellDataGenerator"
+		]
+	},
+	"mixins": [
+		"the-spell.mixins.json",
+		{
+			"config": "the-spell.client.mixins.json",
+			"environment": "client"
+		}
+	],
+	"depends": {
+		"fabricloader": ">=0.18.4",
+		"minecraft": "~1.21.11",
+		"java": ">=21",
+		"fabric-api": "*"
+	}
+}
