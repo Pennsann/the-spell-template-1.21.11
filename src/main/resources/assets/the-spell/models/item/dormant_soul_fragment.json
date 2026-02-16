@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "the-spell:item/dormant_soul_fragment"
+  }
+}
