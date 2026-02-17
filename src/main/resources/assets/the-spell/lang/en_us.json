@@ -1,4 +1,6 @@
 {
   "item.the-spell.dormant_soul_fragment": "Dormant soul fragment",
-  "itemGroup.the-spell": "The spelly"
+  "itemGroup.the-spell": "The spelly",
+  "key.the-spell.open_menu": "Open Spell Menu",
+  "key.category.the-spell.keys": "The Spell Mod"
 }
