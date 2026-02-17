@@ -38,6 +38,8 @@
 		"java": ">=21",
 		"fabric-api": "*",
 		"fabric-networking-api-v1": "*",
-		"fabric-key-binding-api-v1": "*"
+		"fabric-key-binding-api-v1": "*",
+		"fabric-data-generation-api-v1": "*",
+		"fabric-registry-sync-v0": "*"
 	}
 }
