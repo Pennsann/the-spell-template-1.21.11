@@ -1,4 +1,4 @@
-package ss.spellid.item;
+package ss.spellid.item.custom;
 
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -27,8 +27,8 @@ public class DormantFragment extends Item {
             if (stack.isEmpty()) {
                 user.setItemInHand(hand, ItemStack.EMPTY);
             }
-            //Change this later to fill essence into the core
-            user.giveExperienceLevels(12);
+
+            user.giveExperiencePoints(1);
 
         }
         return InteractionResult.SUCCESS;

@@ -13,6 +13,7 @@ import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import ss.spellid.TheSpell;
+import ss.spellid.item.custom.DormantFragment;
 
 public class ModItems {
 
@@ -45,9 +46,6 @@ public class ModItems {
     public static void init() {
 
         TheSpell.LOGGER.info("Initializing Spell Mods");
-
-       // ItemGroupEvents.modifyEntriesEvent(CreativeModeTabs.INGREDIENTS).register(fabricItemGroupEntries
-                //-> fabricItemGroupEntries.accept(ModItems.dormantSoulFragment));
 
         Registry.register(BuiltInRegistries.CREATIVE_MODE_TAB, CUSTOM_CREATIVE_TAB_KEY, CUSTOM_CREATIVE_TAB);
     }
