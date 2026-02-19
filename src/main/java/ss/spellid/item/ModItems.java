@@ -1,7 +1,6 @@
 package ss.spellid.item;
 
 import java.util.function.Function;
-
 import net.fabricmc.fabric.api.itemgroup.v1.FabricItemGroup;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;

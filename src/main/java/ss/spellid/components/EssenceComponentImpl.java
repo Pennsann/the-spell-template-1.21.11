@@ -1,8 +1,11 @@
 package ss.spellid.components;
 
+import net.minecraft.world.entity.Entity;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
+import ss.spellid.ModComponents;
+import ss.spellid.ranks.FragmentTier;
 import ss.spellid.ranks.Ranks;
 
 public class EssenceComponentImpl implements EssenceComponent {
@@ -13,6 +16,12 @@ public class EssenceComponentImpl implements EssenceComponent {
     private int currentEssence = 0;
     private  int storedMicroPoints = 0;
     private int saturationProgress = 0;
+
+    private final Entity entity;
+
+    public EssenceComponentImpl(Entity entity) {
+        this.entity = entity;
+    }
 
     @Override
     public int getCurrentEssence() {
@@ -31,7 +40,7 @@ public class EssenceComponentImpl implements EssenceComponent {
 
     @Override
     public int getMaxEssence() {
-        Ranks rank = modComponents.RANK.get(this.getEntity().getRank());
+        Ranks rank = ModComponents.RANK.get(entity).getRank();
         if(rank.hasSoulCore()){
             return 0;
         }
@@ -46,11 +55,16 @@ public class EssenceComponentImpl implements EssenceComponent {
     }
 
     @Override
-    public void absorbFragment() {
-        Ranks currentRank = ModComponents.RANK.get(this.GetEntity()).getRank();
-        Ranks fragmentRank =Ranks.SLEEPER;
+    public int getSaturationMax() {  // IDK WHAT THIS IS
+        return 0;
+    }
 
-        double pointsGained = currentRank.getPointsPerFragment(fragmentRank);
+    @Override
+    public void absorbFragment() {
+        Ranks currentRank = ModComponents.RANK.get(entity).getRank();
+        FragmentTier fragmentRank = FragmentTier.DORMANT;
+
+        double pointsGained = currentRank.getAbsorptionEfficiencyForFragmentTier(fragmentRank);
 
         if(pointsGained <= 0){
             return;
@@ -77,6 +91,26 @@ public class EssenceComponentImpl implements EssenceComponent {
         tag.putInt("CurrentEssence", currentEssence);
         tag.putInt("StoredMicroPoints", storedMicroPoints);
         tag.putInt("SaturationProgress", saturationProgress);
+    }
+
+    @Override
+    public Ranks getRank() {               // IDK WHAT THIS IS
+        return null;
+    }
+
+    @Override
+    public void setRank(Ranks newRank) { // IDK WHAT THIS IS
+
+    }
+
+    @Override
+    public void readFromNbt(CompoundTag tag) {  // IDK WHAT THIS IS
+
+    }
+
+    @Override
+    public void writeToNbt(CompoundTag tag) {  // IDK WHAT THIS IS
+
     }
 
     @Override

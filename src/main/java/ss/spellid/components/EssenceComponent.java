@@ -6,7 +6,7 @@ import org.ladysnake.cca.api.v3.component.Component;
 import net.minecraft.nbt.CompoundTag;
 import ss.spellid.ranks.Ranks;
 
-public interface EssenceComponent {
+public interface EssenceComponent extends Component {
     int getCurrentEssence();
     void setCurrentEssence(int value);
     void addCurrentEssence(int amount);

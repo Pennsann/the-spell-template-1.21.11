@@ -16,11 +16,15 @@ public enum Ranks {
     public boolean hasSoulCore(){
         return this !=PLAYER;
     }
-    public double getAbsorptionEfficiencyForFragmentTier(Ranks fragmentRank){
+    public double getAbsorptionEfficiencyForFragmentTier(FragmentTier fragmentTier){
         if(!this.hasSoulCore()){
             return 0.0; // can not absorb
         }
-        int tierDifference = fragmentRank.ordinal() - this.ordinal();
+
+        int thisOridnal = this.ordinal();
+        int tierOrdinal = fragmentTier.ordinal();
+        int tierDifference = tierOrdinal - thisOridnal;
+
         if(tierDifference < -1 || tierDifference > 1) {
             return 0.0; // can not absorb
         }
