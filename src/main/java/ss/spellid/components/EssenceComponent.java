@@ -4,6 +4,7 @@ import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import org.ladysnake.cca.api.v3.component.Component;
 import net.minecraft.nbt.CompoundTag;
+import ss.spellid.ranks.FragmentTier;
 import ss.spellid.ranks.Ranks;
 
 public interface EssenceComponent extends Component {
@@ -16,7 +17,7 @@ public interface EssenceComponent extends Component {
     int getSaturationProgress();
     int getSaturationMax();
 
-    void absorbFragment();
+    void absorbFragment(FragmentTier fragment);
 
     void readFromNBT(CompoundTag tag);
     void writeToNBT(CompoundTag tag);

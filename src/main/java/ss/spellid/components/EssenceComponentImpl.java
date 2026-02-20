@@ -60,11 +60,11 @@ public class EssenceComponentImpl implements EssenceComponent {
     }
 
     @Override
-    public void absorbFragment() {
+    public void absorbFragment(FragmentTier fragment) {
         Ranks currentRank = ModComponents.RANK.get(entity).getRank();
-        FragmentTier fragmentRank = FragmentTier.DORMANT;
+        fragment = FragmentTier.DORMANT;
 
-        double pointsGained = currentRank.getAbsorptionEfficiencyForFragmentTier(fragmentRank);
+        double pointsGained = currentRank.getAbsorptionEfficiencyForFragmentTier(fragment);
 
         if(pointsGained <= 0){
             return;
