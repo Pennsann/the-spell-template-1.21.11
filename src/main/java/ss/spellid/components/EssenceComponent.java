@@ -1,7 +1,5 @@
 package ss.spellid.components;
 
-import net.minecraft.world.level.storage.ValueInput;
-import net.minecraft.world.level.storage.ValueOutput;
 import org.ladysnake.cca.api.v3.component.Component;
 import net.minecraft.nbt.CompoundTag;
 import ss.spellid.ranks.FragmentTier;
@@ -19,18 +17,7 @@ public interface EssenceComponent extends Component {
 
     void absorbFragment(FragmentTier fragment);
 
-    void readFromNBT(CompoundTag tag);
-    void writeToNBT(CompoundTag tag);
-
     Ranks getRank();
-
     void setRank(Ranks newRank);
-
-    void readFromNbt(CompoundTag tag);
-
-    void writeToNbt(CompoundTag tag);
-
-    void readData(ValueInput input);
-    void writeData(ValueOutput output);
 
 }

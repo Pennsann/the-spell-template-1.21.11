@@ -1,12 +1,20 @@
 package ss.spellid.components;
 
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
+import ss.spellid.TheSpell;
 import ss.spellid.ranks.Ranks;
 
 public class RankComponentImpl implements RankComponent {
     private Ranks rank = Ranks.PLAYER;
+    private final Player player;
+
+    public RankComponentImpl(Player player) {
+        this.player = player;
+        // any init that needs the player
+    }
 
     @Override
     public Ranks getRank() {
@@ -19,23 +27,22 @@ public class RankComponentImpl implements RankComponent {
     }
 
     @Override
-    public  void readFromNbt(CompoundTag tag){
-        String rankName = tag.getString("Rank").orElse("");
-        try{
+    public void readData(ValueInput input) {
+        TheSpell.LOGGER.info("Loading Rank data from ValueInput");
+
+        String rankName = input.getString("Rank").orElse("");
+        try {
             rank = Ranks.valueOf(rankName);
-        } catch (IllegalArgumentException e){
+            TheSpell.LOGGER.info("Loaded rank: " + rank);
+        } catch (IllegalArgumentException e) {
             rank = Ranks.PLAYER;
+            TheSpell.LOGGER.info("Invalid rank name, defaulting to PLAYER");
         }
     }
 
     @Override
-    public void wrtieNbt(CompoundTag tag){
-        tag.putString("Rank", rank.toString());
+    public void writeData(ValueOutput output) {
+        TheSpell.LOGGER.info("Saving Rank to ValueOutput: " + rank);
+        output.putString("Rank", rank.name());
     }
-
-    @Override
-    public void readData(ValueInput input) {}
-
-    @Override
-    public void writeData(ValueOutput output) {}
 }
