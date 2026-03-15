@@ -6,10 +6,11 @@ import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import ss.spellid.TheSpell;
+import ss.spellid.aspect.Aspect;
+import ss.spellid.aspect.Aspects;
 import ss.spellid.ranks.FragmentTier;
 import ss.spellid.ranks.Ranks;
 
@@ -18,7 +19,6 @@ public class EssenceComponentImpl implements EssenceComponent {
     private static final float TARGET_BONUS = 0.5f;
     private static final int MICRO_PER_POINT = 100;
 
-    // Saturation modifier identifiers
     private static final Identifier SATURATION_HEALTH_MODIFIER_ID = Identifier.fromNamespaceAndPath(TheSpell.MOD_ID, "saturation_health");
     private static final Identifier SATURATION_SPEED_MODIFIER_ID = Identifier.fromNamespaceAndPath(TheSpell.MOD_ID, "saturation_speed");
     private static final Identifier SATURATION_ATTACK_MODIFIER_ID = Identifier.fromNamespaceAndPath(TheSpell.MOD_ID, "saturation_attack");
@@ -28,6 +28,7 @@ public class EssenceComponentImpl implements EssenceComponent {
     private int saturationProgress = 0;
     private Ranks rank = Ranks.PLAYER;
     private boolean hasNightmareSeed = false;
+    private String aspectId = null; // stored as full identifier string e.g. "the-spell:survivor"
 
     private final Entity entity;
 
@@ -92,7 +93,6 @@ public class EssenceComponentImpl implements EssenceComponent {
             return;
         }
 
-        // Handle whole points directly
         if (pointsGained == 1.0 || pointsGained == 5.0) {
             saturationProgress += (int) pointsGained;
             TheSpell.LOGGER.info("Added " + (int) pointsGained + " whole points directly");
@@ -115,7 +115,6 @@ public class EssenceComponentImpl implements EssenceComponent {
         }
         TheSpell.LOGGER.info("After - Saturation: " + saturationProgress);
 
-        // Update attribute modifiers based on new saturation
         updateSaturationModifiers();
     }
 
@@ -139,53 +138,64 @@ public class EssenceComponentImpl implements EssenceComponent {
         this.hasNightmareSeed = hasSeed;
     }
 
-    /**
-     * Updates the player's attribute bonuses based on current saturation.
-     * The bonuses scale linearly from 0 to the max values as saturation increases.
-     */
+    // Aspect methods
+    @Override
+    public String getAspectId() {
+        return aspectId;
+    }
+
+    @Override
+    public void setAspectId(String newAspectId) {
+        // Remove old aspect powers
+        if (aspectId != null && entity instanceof Player player) {
+            Aspect oldAspect = Aspects.get(Identifier.parse(aspectId));
+            if (oldAspect != null) {
+                oldAspect.removeFrom(player);
+            }
+        }
+        this.aspectId = newAspectId;
+        // Apply new aspect powers
+        if (newAspectId != null && entity instanceof Player player) {
+            Aspect newAspect = Aspects.get(Identifier.parse(newAspectId));
+            if (newAspect != null) {
+                newAspect.applyTo(player);
+            }
+        }
+    }
+
+    // Helper to apply aspect on login
+    public void applyAspectToPlayer() {
+        if (aspectId != null && entity instanceof Player player) {
+            Aspect aspect = Aspects.get(Identifier.parse(aspectId));
+            if (aspect != null) {
+                aspect.applyTo(player);
+            }
+        }
+    }
+
+    // Saturation modifiers update
     @Override
     public void updateSaturationModifiers() {
         if (!(entity instanceof Player player)) return;
-
         AttributeInstance healthAttr = player.getAttribute(Attributes.MAX_HEALTH);
         AttributeInstance speedAttr = player.getAttribute(Attributes.MOVEMENT_SPEED);
         AttributeInstance attackAttr = player.getAttribute(Attributes.ATTACK_DAMAGE);
+        if (healthAttr == null || speedAttr == null || attackAttr == null) return;
 
-        if (healthAttr == null || speedAttr == null || attackAttr == null) {
-            TheSpell.LOGGER.warn("Could not get player attributes for saturation modifiers");
-            return;
-        }
-
-        // Remove old modifiers
         healthAttr.removeModifier(SATURATION_HEALTH_MODIFIER_ID);
         speedAttr.removeModifier(SATURATION_SPEED_MODIFIER_ID);
         attackAttr.removeModifier(SATURATION_ATTACK_MODIFIER_ID);
 
-        // Calculate scaling factor (0.0 to 1.0)
         float factor = (float) saturationProgress / SATURATION_STEPS;
         if (factor <= 0.0f) return;
 
-        // Max bonuses (adjust these values as desired)
-        double maxHealthBonus = 4.0;   // +2 hearts (4 HP)
-        double maxSpeedBonus = 0.003;  // +3% movement speed (base 0.1 → 0.103)
-        double maxAttackBonus = 0.5;   // +0.5 attack damage
+        double maxHealthBonus = 4.0;
+        double maxSpeedBonus = 0.003;
+        double maxAttackBonus = 0.5;
 
-        // Apply scaled modifiers
-        healthAttr.addTransientModifier(new AttributeModifier(
-                SATURATION_HEALTH_MODIFIER_ID,
-                maxHealthBonus * factor,
-                AttributeModifier.Operation.ADD_VALUE
-        ));
-        speedAttr.addTransientModifier(new AttributeModifier(
-                SATURATION_SPEED_MODIFIER_ID,
-                maxSpeedBonus * factor,
-                AttributeModifier.Operation.ADD_VALUE
-        ));
-        attackAttr.addTransientModifier(new AttributeModifier(
-                SATURATION_ATTACK_MODIFIER_ID,
-                maxAttackBonus * factor,
-                AttributeModifier.Operation.ADD_VALUE
-        ));
+        healthAttr.addTransientModifier(new AttributeModifier(SATURATION_HEALTH_MODIFIER_ID, maxHealthBonus * factor, AttributeModifier.Operation.ADD_VALUE));
+        speedAttr.addTransientModifier(new AttributeModifier(SATURATION_SPEED_MODIFIER_ID, maxSpeedBonus * factor, AttributeModifier.Operation.ADD_VALUE));
+        attackAttr.addTransientModifier(new AttributeModifier(SATURATION_ATTACK_MODIFIER_ID, maxAttackBonus * factor, AttributeModifier.Operation.ADD_VALUE));
     }
 
     @Override
@@ -203,17 +213,21 @@ public class EssenceComponentImpl implements EssenceComponent {
             rank = Ranks.PLAYER;
         }
 
-        // Read nightmare seed as int (0 = false, 1 = true)
         hasNightmareSeed = input.getInt("NightmareSeed").orElse(0) != 0;
+
+        // Load aspectId (stored as full identifier string)
+        aspectId = input.getString("AspectId").orElse(null);
 
         TheSpell.LOGGER.info("Loaded: essence=" + currentEssence +
                 ", micro=" + storedMicroPoints +
                 ", sat=" + saturationProgress +
                 ", rank=" + rank +
-                ", seed=" + hasNightmareSeed);
+                ", seed=" + hasNightmareSeed +
+                ", aspect=" + aspectId);
 
-        // Apply saturation modifiers after loading
+        // Apply saturation modifiers and aspect after loading
         updateSaturationModifiers();
+        applyAspectToPlayer();
     }
 
     @Override
@@ -225,11 +239,15 @@ public class EssenceComponentImpl implements EssenceComponent {
         output.putInt("SaturationProgress", saturationProgress);
         output.putString("Rank", rank.name());
         output.putInt("NightmareSeed", hasNightmareSeed ? 1 : 0);
+        if (aspectId != null) {
+            output.putString("AspectId", aspectId);
+        }
 
         TheSpell.LOGGER.info("Saved: essence=" + currentEssence +
                 ", micro=" + storedMicroPoints +
                 ", sat=" + saturationProgress +
                 ", rank=" + rank +
-                ", seed=" + hasNightmareSeed);
+                ", seed=" + hasNightmareSeed +
+                ", aspect=" + aspectId);
     }
 }

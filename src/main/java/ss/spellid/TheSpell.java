@@ -1,6 +1,6 @@
 package ss.spellid;
 
-import com.mojang.brigadier.Command;
+import com.mojang.brigadier.arguments.StringArgumentType;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
@@ -11,13 +11,15 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ss.spellid.aspect.Aspect;
+import ss.spellid.aspect.Aspects;
 import ss.spellid.components.RankComponentInitializer;
 import ss.spellid.effect.ModEffects;
+import ss.spellid.event.NightmareCompletionHandler;
 import ss.spellid.event.SleepHandler;
 import ss.spellid.item.ModItems;
 import ss.spellid.ranks.Ranks;
@@ -51,6 +53,8 @@ public class TheSpell implements ModInitializer {
 
 		// Register event handlers
 		SleepHandler.register();
+		NightmareCompletionHandler.register();
+		Aspects.init(); // load aspect registry
 
 		// Register commands
 		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
@@ -61,9 +65,18 @@ public class TheSpell implements ModInitializer {
 						var rankComp = RANK_KEY.get(player);
 						var essenceComp = ESSENCE.get(player);
 
+						String aspectDisplay = "None";
+						if (essenceComp.getAspectId() != null) {
+							Aspect aspect = Aspects.get(Identifier.parse(essenceComp.getAspectId()));
+							if (aspect != null) {
+								aspectDisplay = aspect.getDisplayName().getString();
+							}
+						}
+
 						player.displayClientMessage(Component.literal("§6Rank: §f" + rankComp.getRank().getDisplayName()), false);
 						player.displayClientMessage(Component.literal("§6Essence: §f" + essenceComp.getCurrentEssence() + " / " + essenceComp.getMaxEssence()), false);
 						player.displayClientMessage(Component.literal("§6Saturation: §f" + essenceComp.getSaturationProgress() + "/" + essenceComp.getSaturationMax()), false);
+						player.displayClientMessage(Component.literal("§6Aspect: §f" + aspectDisplay), false);
 						return 1;
 					}));
 
@@ -72,7 +85,7 @@ public class TheSpell implements ModInitializer {
 					.executes(context -> {
 						Player player = context.getSource().getPlayerOrException();
 
-						Identifier dimensionId = Identifier.fromNamespaceAndPath(TheSpell.MOD_ID, "first_nightmare");
+						Identifier dimensionId = Identifier.fromNamespaceAndPath(MOD_ID, "first_nightmare");
 						ResourceKey<Level> nightmareKey = ResourceKey.create(
 								Registries.DIMENSION,
 								dimensionId
@@ -95,7 +108,7 @@ public class TheSpell implements ModInitializer {
 							);
 							player.displayClientMessage(Component.literal("§aYou escape the nightmare... for now."), false);
 
-							// Promote to SLEEPER after exiting nightmare
+							// Promote to SLEEPER if still PLAYER (in case they didn't complete via block)
 							var rankComp = RANK_KEY.get(serverPlayer);
 							if (rankComp.getRank() == Ranks.PLAYER) {
 								rankComp.setRank(Ranks.SLEEPER);
@@ -107,7 +120,7 @@ public class TheSpell implements ModInitializer {
 						return 1;
 					}));
 
-			// Spell seed commands (with effect)
+			// Spell seed commands
 			dispatcher.register(Commands.literal("spell")
 					.then(Commands.literal("seed")
 							.then(Commands.literal("give")
@@ -115,11 +128,10 @@ public class TheSpell implements ModInitializer {
 										Player player = context.getSource().getPlayerOrException();
 										var essence = ESSENCE.get(player);
 										essence.setNightmareSeed(true);
-										// Give infinite effect
 										if (player instanceof ServerPlayer serverPlayer) {
-											serverPlayer.addEffect(new MobEffectInstance(
+											serverPlayer.addEffect(new net.minecraft.world.effect.MobEffectInstance(
 													ModEffects.NIGHTMARE_SEED,
-													-1, // infinite
+													-1,
 													0,
 													false,
 													true,
@@ -140,6 +152,50 @@ public class TheSpell implements ModInitializer {
 										LOGGER.info("Seed manually removed from " + player.getName().getString());
 										return 1;
 									}))));
+
+			// Aspect commands
+			dispatcher.register(Commands.literal("spell")
+					.then(Commands.literal("aspect")
+							.then(Commands.literal("get")
+									.executes(context -> {
+										Player player = context.getSource().getPlayerOrException();
+										var essence = ESSENCE.get(player);
+										String aspectId = essence.getAspectId();
+										if (aspectId == null) {
+											player.displayClientMessage(Component.literal("§cYou have no aspect."), false);
+										} else {
+											Aspect aspect = Aspects.get(Identifier.parse(aspectId));
+											if (aspect != null) {
+												player.displayClientMessage(Component.literal("§6Your aspect: §f" + aspect.getDisplayName().getString()), false);
+											} else {
+												player.displayClientMessage(Component.literal("§cAspect data corrupted."), false);
+											}
+										}
+										return 1;
+									}))
+							.then(Commands.literal("set")
+									.then(Commands.argument("id", StringArgumentType.string())
+											.executes(context -> {
+												String id = context.getArgument("id", String.class);
+												Player player = context.getSource().getPlayerOrException();
+												Identifier aspectId;
+												try {
+													aspectId = Identifier.parse(id);
+												} catch (Exception e) {
+													player.displayClientMessage(Component.literal("§cInvalid aspect ID format. Use namespace:path (e.g., the-spell:survivor)"), false);
+													return 0;
+												}
+												Aspect aspect = Aspects.get(aspectId);
+												if (aspect == null) {
+													player.displayClientMessage(Component.literal("§cAspect not found: " + id), false);
+													return 0;
+												}
+												var essence = ESSENCE.get(player);
+												essence.setAspectId(aspectId.toString());
+												player.displayClientMessage(Component.literal("§aAspect set to " + aspect.getDisplayName().getString()), false);
+												LOGGER.info("Aspect set for {}: {}", player.getName().getString(), aspectId);
+												return 1;
+											})))));
 		});
 	}
 }

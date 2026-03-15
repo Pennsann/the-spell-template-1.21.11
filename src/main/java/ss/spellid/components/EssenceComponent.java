@@ -10,20 +10,19 @@ public interface EssenceComponent extends Component {
     int getCurrentEssence();
     void setCurrentEssence(int value);
     void addCurrentEssence(int amount);
-
     int getMaxEssence();
-
-    void updateSaturationModifiers();
-
     int getSaturationProgress();
     int getSaturationMax();
-
     void absorbFragment(FragmentTier fragment);
-
     Ranks getRank();
     void setRank(Ranks newRank);
-
-    // Nightmare seed flag
     boolean hasNightmareSeed();
     void setNightmareSeed(boolean hasSeed);
+
+    // New aspect methods
+    void setAspectId(String aspectId);
+    String getAspectId();
+
+    // Update saturation modifiers (unchanged)
+    void updateSaturationModifiers();
 }
