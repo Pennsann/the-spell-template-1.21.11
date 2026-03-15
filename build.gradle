@@ -45,6 +45,7 @@ dependencies {
 
 	// Fabric API. This is technically optional, but you probably want it anyway.
 	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+	modImplementation "net.fabricmc.fabric-api:fabric-dimensions-v1:${fabric_api_version}"
 
 	modImplementation "org.ladysnake.cardinal-components-api:cardinal-components-base:7.3.0"
 	modImplementation "org.ladysnake.cardinal-components-api:cardinal-components-entity:7.3.0"

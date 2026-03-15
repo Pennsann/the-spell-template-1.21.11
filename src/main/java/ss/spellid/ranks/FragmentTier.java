@@ -3,5 +3,9 @@ package ss.spellid.ranks;
 public enum FragmentTier {
     DORMANT,
     AWAKENED,
-    ASCENDANT;
+    ASCENDED,
+    TRANSCENDENT,
+    SUPREME,
+    SACRED,
+    DIVINE;
 }

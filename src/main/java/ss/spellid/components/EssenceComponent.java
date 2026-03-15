@@ -1,7 +1,8 @@
 package ss.spellid.components;
 
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import org.ladysnake.cca.api.v3.component.Component;
-import net.minecraft.nbt.CompoundTag;
 import ss.spellid.ranks.FragmentTier;
 import ss.spellid.ranks.Ranks;
 
@@ -12,6 +13,8 @@ public interface EssenceComponent extends Component {
 
     int getMaxEssence();
 
+    void updateSaturationModifiers();
+
     int getSaturationProgress();
     int getSaturationMax();
 
@@ -20,4 +23,7 @@ public interface EssenceComponent extends Component {
     Ranks getRank();
     void setRank(Ranks newRank);
 
+    // Nightmare seed flag
+    boolean hasNightmareSeed();
+    void setNightmareSeed(boolean hasSeed);
 }

@@ -3,13 +3,22 @@ package ss.spellid.ranks;
 import ss.spellid.TheSpell;
 
 public enum Ranks {
-    PLAYER(0),
-    SLEEPER(150),
-    AWAKENED(400),
-    //add more and more ranks when satisfied :D
-    ;
+    PLAYER(0, "Unawakened"),
+    SLEEPER(150, "Dormant"),
+    AWAKENED(400,"Awakened"),
+    ASCENDED(1000, "Ascended"),
+    TRANSCENDENT(2500, "Transcendent"),
+    SUPREME(6000, "Supreme"),
+    SACRED(15000, "Sacred"),
+    DIVINE(50000, "Divine");
 
     private int baseMaxEssence;
+    private String displayName;
+
+    Ranks(int baseMaxEssence, String displayName) {
+        this.baseMaxEssence = baseMaxEssence;
+        this.displayName = displayName;
+    }
 
     Ranks(int baseMaxEssence) {
         this.baseMaxEssence = baseMaxEssence;
@@ -18,6 +27,7 @@ public enum Ranks {
     public int getBaseMaxEssence() {
         return baseMaxEssence;
     }
+    public String getDisplayName() { return displayName; }
 
     public boolean hasSoulCore(){
         return this != PLAYER;
@@ -60,7 +70,7 @@ public enum Ranks {
                 efficiency = 0.0; // Too low, cannot absorb
             } else if (fragmentTier == FragmentTier.AWAKENED) { // AWAKENED is ordinal 1, difference = -1
                 efficiency = 0.2; // Awakened needs 5 Dormant fragments for 1 point
-            } else if (fragmentTier == FragmentTier.ASCENDANT) { // ASCENDANT is ordinal 2, difference = 0
+            } else if (fragmentTier == FragmentTier.ASCENDED) { // ASCENDANT is ordinal 2, difference = 0
                 efficiency = 1.0; // Awakened gets 1 point from Ascendant fragment
             } else {
                 efficiency = 0.0;
