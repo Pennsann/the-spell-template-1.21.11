@@ -12,7 +12,10 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import ss.spellid.TheSpell;
 import ss.spellid.components.RankComponentInitializer;
+import ss.spellid.components.NightmareInstance;
 import ss.spellid.effect.ModEffects;
+import ss.spellid.nightmare.Nightmare;
+import ss.spellid.nightmare.NightmareManager;
 import ss.spellid.ranks.Ranks;
 
 import java.util.Set;
@@ -24,51 +27,51 @@ public class SleepHandler {
     public static void register() {
         EntitySleepEvents.START_SLEEPING.register((entity, sleepingPos) -> {
             if (entity instanceof ServerPlayer player) {
-                TheSpell.LOGGER.info("===== SLEEP EVENT STARTED =====");
-                TheSpell.LOGGER.info("Player: " + player.getName().getString());
-
                 var essence = ESSENCE.get(player);
                 boolean hasSeed = essence.hasNightmareSeed();
-                TheSpell.LOGGER.info("hasNightmareSeed from component: " + hasSeed);
 
-                // 2% chance to get nightmare seed (only if they don't have it)
+                // 2% chance to get nightmare seed (only if they don't have it AND rank is PLAYER)
                 if (!hasSeed && player.getRandom().nextFloat() < 0.02f) {
-                    essence.setNightmareSeed(true);
-                    player.addEffect(new net.minecraft.world.effect.MobEffectInstance(
-                            ModEffects.NIGHTMARE_SEED,
-                            -1,
-                            0,
-                            false,
-                            true,
-                            true
-                    ));
-                    player.displayClientMessage(Component.literal("§5You feel a strange seed taking root in your soul..."), false);
-                    TheSpell.LOGGER.info("Randomly applied nightmare seed.");
+                    var rankComp = RANK_KEY.get(player);
+                    if (rankComp.getRank() == Ranks.PLAYER) {
+                        essence.setNightmareSeed(true);
+                        player.addEffect(new net.minecraft.world.effect.MobEffectInstance(
+                                ModEffects.NIGHTMARE_SEED,
+                                -1,
+                                0,
+                                false,
+                                true,
+                                true
+                        ));
+                        player.displayClientMessage(Component.literal("§5You feel a strange seed taking root in your soul..."), false);
+                    }
                 }
 
                 // If they have the seed and are PLAYER, trigger First Nightmare
                 if (hasSeed) {
                     var rankComp = RANK_KEY.get(player);
                     Ranks currentRank = rankComp.getRank();
-                    TheSpell.LOGGER.info("Player rank: " + currentRank);
                     if (currentRank == Ranks.PLAYER) {
-                        TheSpell.LOGGER.info("Conditions met. Teleporting to nightmare dimension (seed remains)");
+                        // Get a random uncompleted solo nightmare
+                        Identifier nightmareId = NightmareManager.getRandomUncompletedSolo(player);
+                        if (nightmareId == null) {
+                            player.displayClientMessage(Component.literal("§cNo nightmares remain..."), false);
+                            return;
+                        }
+                        Nightmare nightmare = NightmareManager.get(nightmareId);
+                        if (nightmare == null) return;
+                        ResourceKey<Level> nightmareKey = nightmare.dimensionKey();
 
-                        Identifier dimensionId = Identifier.fromNamespaceAndPath(TheSpell.MOD_ID, "first_nightmare");
-                        ResourceKey<Level> nightmareKey = ResourceKey.create(
-                                Registries.DIMENSION,
-                                dimensionId
-                        );
+                        // Attach nightmare instance
+                        var instance = RankComponentInitializer.NIGHTMARE_INSTANCE.get(player);
+                        instance.setNightmareId(nightmareId);
+                        instance.setCompleted(false);
 
-                        TheSpell.LOGGER.info("Looking for dimension with key: " + nightmareKey);
                         ServerLevel nightmareLevel = player.level().getServer().getLevel(nightmareKey);
-                        TheSpell.LOGGER.info("Nightmare level found: " + (nightmareLevel != null));
-
                         if (nightmareLevel != null) {
                             double x = nightmareLevel.getRespawnData().pos().getX();
                             double y = nightmareLevel.getRespawnData().pos().getY();
                             double z = nightmareLevel.getRespawnData().pos().getZ();
-                            TheSpell.LOGGER.info("Teleport coordinates: " + x + ", " + y + ", " + z);
 
                             player.teleportTo(
                                     nightmareLevel,
@@ -79,22 +82,17 @@ public class SleepHandler {
                                     false
                             );
                             player.displayClientMessage(Component.literal("§5You awaken in a strange, empty realm... the First Nightmare begins!"), false);
-                            TheSpell.LOGGER.info("Teleport command executed.");
 
-                            // Place a gold block at the completion position (two blocks above spawn)
-                            BlockPos completionPos = nightmareLevel.getRespawnData().pos().above(2);
+                            // Place a gold block at the completion position (two blocks east of spawn)
+                            BlockPos completionPos = nightmareLevel.getRespawnData().pos().offset(2, 0, 0);
                             nightmareLevel.setBlock(completionPos, Blocks.GOLD_BLOCK.defaultBlockState(), 3);
-                            TheSpell.LOGGER.info("Placed gold block at {}", completionPos);
                         } else {
-                            TheSpell.LOGGER.error("Nightmare dimension not found! Check JSON files.");
+                            player.displayClientMessage(Component.literal("§cNightmare dimension not found!"), false);
                         }
                     } else {
-                        TheSpell.LOGGER.info("Player rank is not PLAYER, skipping teleport.");
+                        player.displayClientMessage(Component.literal("§cYou are already awakened and cannot enter another First Nightmare."), false);
                     }
-                } else {
-                    TheSpell.LOGGER.info("Player does NOT have nightmare seed, no teleport.");
                 }
-                TheSpell.LOGGER.info("===== SLEEP EVENT ENDED =====\n");
             }
         });
     }

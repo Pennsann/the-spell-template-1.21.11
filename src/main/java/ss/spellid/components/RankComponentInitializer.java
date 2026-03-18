@@ -1,8 +1,8 @@
 package ss.spellid.components;
 
-import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Player;
 import org.ladysnake.cca.api.v3.component.ComponentKey;
+import net.minecraft.resources.Identifier;
 import org.ladysnake.cca.api.v3.component.ComponentRegistryV3;
 import org.ladysnake.cca.api.v3.entity.EntityComponentFactoryRegistry;
 import org.ladysnake.cca.api.v3.entity.EntityComponentInitializer;
@@ -22,28 +22,32 @@ public class RankComponentInitializer implements EntityComponentInitializer {
                     EssenceComponent.class
             );
 
+    // New nightmare instance component
+    public static final ComponentKey<NightmareInstance> NIGHTMARE_INSTANCE =
+            ComponentRegistryV3.INSTANCE.getOrCreate(
+                    Identifier.fromNamespaceAndPath(TheSpell.MOD_ID, "nightmare_instance"),
+                    NightmareInstance.class
+            );
+
     @Override
     public void registerEntityComponentFactories(EntityComponentFactoryRegistry registry) {
-        TheSpell.LOGGER.info("Starting registration of rank and essence components");
-        TheSpell.LOGGER.info("RANK_KEY: " + RANK_KEY.getId());
-        TheSpell.LOGGER.info("ESSENCE_KEY: " + ESSENCE.getId());
-
         registry.registerForPlayers(
                 RANK_KEY,
-                player -> {
-                    return new RankComponentImpl(player);
-                },
+                player -> new RankComponentImpl(player),
                 RespawnCopyStrategy.ALWAYS_COPY
         );
 
         registry.registerForPlayers(
                 ESSENCE,
-                player -> {
-                    return new EssenceComponentImpl(player);
-                },
+                player -> new EssenceComponentImpl(player),
                 RespawnCopyStrategy.ALWAYS_COPY
         );
 
-        TheSpell.LOGGER.info("Rank and essence components successfully registered");
+        // Register nightmare instance – not copied on death/respawn
+        registry.registerForPlayers(
+                NIGHTMARE_INSTANCE,
+                player -> new NightmareInstanceImpl(),
+                RespawnCopyStrategy.NEVER_COPY
+        );
     }
 }

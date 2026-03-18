@@ -1,7 +1,5 @@
 package ss.spellid.ranks;
 
-import ss.spellid.TheSpell;
-
 public enum Ranks {
     PLAYER(0, "Unawakened"),
     SLEEPER(150, "Dormant"),
@@ -11,6 +9,32 @@ public enum Ranks {
     SUPREME(6000, "Supreme"),
     SACRED(15000, "Sacred"),
     DIVINE(50000, "Divine");
+
+    public int getHealPerRegenCycle() {
+        return switch (this) {
+            case PLAYER -> 1;         // vanilla
+            case SLEEPER -> 2;
+            case AWAKENED -> 3;
+            case ASCENDED -> 4;
+            case TRANSCENDENT -> 5;
+            case SUPREME -> 6;
+            case SACRED -> 7;
+            case DIVINE -> 8;
+        };
+    }
+
+    public int getHungerRegenPerMinute() {
+        return switch (this) {
+            case PLAYER -> 0;          // no regen
+            case SLEEPER -> 1;         // 1 hunger point per minute (0.5 shank)
+            case AWAKENED -> 2;        // 2 hunger points per minute
+            case ASCENDED -> 3;
+            case TRANSCENDENT -> 4;
+            case SUPREME -> 5;
+            case SACRED -> 6;
+            case DIVINE -> 8;
+        };
+    }
 
     private int baseMaxEssence;
     private String displayName;
@@ -42,13 +66,8 @@ public enum Ranks {
         int tierOrdinal = fragmentTier.ordinal();
         int tierDifference = tierOrdinal - thisOrdinal;
 
-        TheSpell.LOGGER.info("Rank: " + this + " (ordinal: " + thisOrdinal +
-                "), Fragment: " + fragmentTier + " (ordinal: " + tierOrdinal +
-                "), Difference: " + tierDifference);
-
         // If the fragment is too low or too high rank, cannot absorb
         if (tierDifference < -1 || tierDifference > 1) {
-            TheSpell.LOGGER.info("Tier difference too great, cannot absorb");
             return 0.0;
         }
 
@@ -86,7 +105,6 @@ public enum Ranks {
             };
         }
 
-        TheSpell.LOGGER.info("Absorption efficiency: " + efficiency);
         return efficiency;
     }
 }

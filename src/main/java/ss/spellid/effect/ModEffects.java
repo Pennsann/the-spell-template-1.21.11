@@ -18,7 +18,5 @@ public class ModEffects {
 
         // Create a direct holder from the effect instance
         NIGHTMARE_SEED = Holder.direct(NIGHTMARE_SEED_EFFECT);
-
-        TheSpell.LOGGER.info("Registered Nightmare Seed effect");
     }
 }

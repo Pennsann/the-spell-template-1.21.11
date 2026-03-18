@@ -26,7 +26,6 @@ public class AttributeModifierPower implements AspectPower {
     public void apply(Player player) {
         var optionalHolder = BuiltInRegistries.ATTRIBUTE.get(attributeId);
         if (optionalHolder.isEmpty()) {
-            TheSpell.LOGGER.warn("Attribute not found: {}", attributeId);
             return;
         }
         Holder<Attribute> holder = optionalHolder.get();

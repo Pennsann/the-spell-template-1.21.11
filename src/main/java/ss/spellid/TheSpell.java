@@ -17,10 +17,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ss.spellid.aspect.Aspect;
 import ss.spellid.aspect.Aspects;
+import ss.spellid.block.ModBlocks;
 import ss.spellid.components.RankComponentInitializer;
 import ss.spellid.effect.ModEffects;
 import ss.spellid.event.NightmareCompletionHandler;
 import ss.spellid.event.SleepHandler;
+import ss.spellid.event.EssenceRegenHandler;
 import ss.spellid.item.ModItems;
 import ss.spellid.ranks.Ranks;
 
@@ -37,7 +39,9 @@ public class TheSpell implements ModInitializer {
 	public void onInitialize() {
 		LOGGER.info(MOD_ID + " initialized");
 		ModItems.init();
+		ModBlocks.init();
 		ModEffects.register();
+		EssenceRegenHandler.register();
 
 		// Join event: display current rank
 		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
@@ -54,7 +58,7 @@ public class TheSpell implements ModInitializer {
 		// Register event handlers
 		SleepHandler.register();
 		NightmareCompletionHandler.register();
-		Aspects.init(); // load aspect registry
+		Aspects.init();
 
 		// Register commands
 		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
@@ -80,7 +84,7 @@ public class TheSpell implements ModInitializer {
 						return 1;
 					}));
 
-			// Nightmare exit command (with rank-up)
+			// Nightmare exit command
 			dispatcher.register(Commands.literal("nightmare_exit")
 					.executes(context -> {
 						Player player = context.getSource().getPlayerOrException();
@@ -107,25 +111,23 @@ public class TheSpell implements ModInitializer {
 									false
 							);
 							player.displayClientMessage(Component.literal("§aYou escape the nightmare... for now."), false);
-
-							// Promote to SLEEPER if still PLAYER (in case they didn't complete via block)
-							var rankComp = RANK_KEY.get(serverPlayer);
-							if (rankComp.getRank() == Ranks.PLAYER) {
-								rankComp.setRank(Ranks.SLEEPER);
-								player.displayClientMessage(Component.literal("§aYou have survived the First Nightmare! You are now a Sleeper."), false);
-							}
 						} else {
 							player.displayClientMessage(Component.literal("§cYou are not in a nightmare!"), false);
 						}
 						return 1;
 					}));
 
-			// Spell seed commands
+			// Spell seed commands – only PLAYER can receive seed
 			dispatcher.register(Commands.literal("spell")
 					.then(Commands.literal("seed")
 							.then(Commands.literal("give")
 									.executes(context -> {
 										Player player = context.getSource().getPlayerOrException();
+										var rankComp = RANK_KEY.get(player);
+										if (rankComp.getRank() != Ranks.PLAYER) {
+											player.displayClientMessage(Component.literal("§cOnly the Unawakened can receive the seed."), false);
+											return 0;
+										}
 										var essence = ESSENCE.get(player);
 										essence.setNightmareSeed(true);
 										if (player instanceof ServerPlayer serverPlayer) {
@@ -153,7 +155,7 @@ public class TheSpell implements ModInitializer {
 										return 1;
 									}))));
 
-			// Aspect commands
+			// Aspect commands (optional – can be kept for testing)
 			dispatcher.register(Commands.literal("spell")
 					.then(Commands.literal("aspect")
 							.then(Commands.literal("get")

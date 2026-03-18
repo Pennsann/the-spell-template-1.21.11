@@ -9,10 +9,14 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Blocks;
 import ss.spellid.TheSpell;
 import ss.spellid.aspect.Aspects;
 import ss.spellid.components.RankComponentInitializer;
+import ss.spellid.components.NightmareInstance;
 import ss.spellid.effect.ModEffects;
+import ss.spellid.nightmare.Nightmare;
+import ss.spellid.nightmare.NightmareManager;
 import ss.spellid.ranks.Ranks;
 
 import java.util.Set;
@@ -21,14 +25,20 @@ import static ss.spellid.components.RankComponentInitializer.RANK_KEY;
 import static ss.spellid.components.RankComponentInitializer.ESSENCE;
 
 public class NightmareCompletionHandler {
-    private static final Identifier NIGHTMARE_ID = Identifier.fromNamespaceAndPath(TheSpell.MOD_ID, "first_nightmare");
-    private static final ResourceKey<Level> NIGHTMARE_KEY = ResourceKey.create(Registries.DIMENSION, NIGHTMARE_ID);
-    private static final BlockPos COMPLETION_POS_OFFSET = new BlockPos(0, 2, 0); // two blocks above spawn
+    private static final BlockPos COMPLETION_POS_OFFSET = new BlockPos(2, 0, 0); // two blocks east of spawn
 
     public static void register() {
         ServerTickEvents.END_SERVER_TICK.register(server -> {
             for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-                if (!player.level().dimension().equals(NIGHTMARE_KEY)) continue;
+                var instance = RankComponentInitializer.NIGHTMARE_INSTANCE.get(player);
+                Identifier nightmareId = instance.getNightmareId();
+                if (nightmareId == null) continue;
+
+                Nightmare nightmare = NightmareManager.get(nightmareId);
+                if (nightmare == null) continue;
+
+                if (!player.level().dimension().equals(nightmare.dimensionKey())) continue;
+
                 var essence = ESSENCE.get(player);
                 if (!essence.hasNightmareSeed()) continue;
 
@@ -36,32 +46,37 @@ public class NightmareCompletionHandler {
                 BlockPos spawn = nightmareLevel.getRespawnData().pos();
                 BlockPos completionPos = spawn.offset(COMPLETION_POS_OFFSET);
 
-                // Debug logging to see positions
-                TheSpell.LOGGER.info("Player {} at pos {}, completion pos {}", player.getName().getString(), player.blockPosition(), completionPos);
-
-                // Exact check: player stands on the gold block (block below is the gold block)
-                if (player.blockPosition().below().equals(completionPos)) {
-                    TheSpell.LOGGER.info("Exact completion condition met for {}", player.getName().getString());
-                    completeNightmare(player);
+                // Check if player is within 1.5 blocks of the completion block
+                double distance = player.blockPosition().distSqr(completionPos);
+                if (distance < 2.25) {
+                    completeNightmare(player, nightmare, instance);
                 }
-                // Optional range check (within 1.5 blocks) – uncomment if exact check fails
-                /*
-                else if (player.blockPosition().distSqr(completionPos.above()) < 2.25) {
-                    TheSpell.LOGGER.info("Range completion condition met for {}", player.getName().getString());
-                    completeNightmare(player);
-                }
-                */
             }
         });
     }
 
-    private static void completeNightmare(ServerPlayer player) {
-        TheSpell.LOGGER.info("Player {} completed the First Nightmare!", player.getName().getString());
+    private static void completeNightmare(ServerPlayer player, Nightmare nightmare, NightmareInstance instance) {
+        if (instance.isCompleted()) {
+            return;
+        }
 
+        Identifier nightmareId = instance.getNightmareId();
+        if (nightmareId == null) {
+            return;
+        }
+
+        // Mark global completion
+        NightmareManager.complete(nightmareId, player);
+
+        // Remove seed and effect
         var essence = ESSENCE.get(player);
         essence.setNightmareSeed(false);
         player.removeEffect(ModEffects.NIGHTMARE_SEED);
 
+        // Grant the aspect associated with this nightmare
+        essence.setAspectId(nightmare.aspectId().toString());
+
+        // Teleport back to overworld spawn
         ServerLevel overworld = player.level().getServer().overworld();
         BlockPos spawn = overworld.getRespawnData().pos();
         player.teleportTo(
@@ -73,13 +88,14 @@ public class NightmareCompletionHandler {
                 false
         );
 
+        // Promote to SLEEPER
         var rankComp = RANK_KEY.get(player);
         rankComp.setRank(Ranks.SLEEPER);
 
-        // Grant a random starter aspect (full identifier)
-        Identifier aspectId = Aspects.getRandomStarterId();
-        essence.setAspectId(aspectId.toString());
+        // Clear nightmare instance data
+        instance.setNightmareId(null);
+        instance.setCompleted(true);
 
-        player.displayClientMessage(Component.literal("§aYou have conquered the First Nightmare! You are now a Sleeper with the " + Aspects.get(aspectId).getDisplayName().getString() + " aspect."), false);
+        player.displayClientMessage(Component.literal("§aYou have conquered the First Nightmare! You are now a Sleeper with the " + nightmare.displayName() + " aspect."), false);
     }
 }

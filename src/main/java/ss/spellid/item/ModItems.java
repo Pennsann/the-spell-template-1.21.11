@@ -12,6 +12,7 @@ import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import ss.spellid.TheSpell;
+import ss.spellid.block.ModBlocks;
 import ss.spellid.item.custom.DormantFragment;
 
 public class ModItems {
@@ -27,6 +28,7 @@ public class ModItems {
             .title(Component.translatable("itemGroup.the-spell"))
             .displayItems((params, output) -> {
                 output.accept(DORMANT_FRAGMENT);
+                output.accept(ModBlocks.CITADEL_GATEWAY);
             })
             .build();
 
@@ -45,9 +47,6 @@ public class ModItems {
     }
 
     public static void init() {
-
-        TheSpell.LOGGER.info("Initializing Spell Mods");
-
         Registry.register(BuiltInRegistries.CREATIVE_MODE_TAB, CUSTOM_CREATIVE_TAB_KEY, CUSTOM_CREATIVE_TAB);
     }
 

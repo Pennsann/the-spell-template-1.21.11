@@ -28,7 +28,8 @@ public class EssenceComponentImpl implements EssenceComponent {
     private int saturationProgress = 0;
     private Ranks rank = Ranks.PLAYER;
     private boolean hasNightmareSeed = false;
-    private String aspectId = null; // stored as full identifier string e.g. "the-spell:survivor"
+    private String aspectId = null;
+    private int regenTimer = 0;
 
     private final Entity entity;
 
@@ -37,9 +38,7 @@ public class EssenceComponentImpl implements EssenceComponent {
     }
 
     @Override
-    public int getCurrentEssence() {
-        return currentEssence;
-    }
+    public int getCurrentEssence() { return currentEssence; }
 
     @Override
     public void setCurrentEssence(int value) {
@@ -47,55 +46,38 @@ public class EssenceComponentImpl implements EssenceComponent {
     }
 
     @Override
-    public void addCurrentEssence(int amount) {
-        setCurrentEssence(getCurrentEssence() + amount);
-    }
+    public void addCurrentEssence(int amount) { setCurrentEssence(getCurrentEssence() + amount); }
 
     @Override
     public int getMaxEssence() {
         Ranks rank = RankComponentInitializer.RANK_KEY.get(entity).getRank();
-        if (!rank.hasSoulCore()) {
-            return 0;
-        }
+        if (!rank.hasSoulCore()) return 0;
         int base = rank.getBaseMaxEssence();
         float bonus = TARGET_BONUS * (saturationProgress / (float) SATURATION_STEPS);
         return (int) (base * (1 + bonus));
     }
 
     @Override
-    public int getSaturationProgress() {
-        return saturationProgress;
-    }
+    public int getSaturationProgress() { return saturationProgress; }
 
     @Override
-    public int getSaturationMax() {
-        return SATURATION_STEPS;
-    }
+    public int getSaturationMax() { return SATURATION_STEPS; }
 
     @Override
     public void absorbFragment(FragmentTier fragment) {
         if (saturationProgress >= SATURATION_STEPS) {
-            TheSpell.LOGGER.info("Already saturated!");
             return;
         }
 
         Ranks currentRank = RankComponentInitializer.RANK_KEY.get(entity).getRank();
         double pointsGained = currentRank.getAbsorptionEfficiencyForFragmentTier(fragment);
 
-        TheSpell.LOGGER.info("=== Absorption Debug ===");
-        TheSpell.LOGGER.info("Current rank: " + currentRank);
-        TheSpell.LOGGER.info("Fragment tier: " + fragment);
-        TheSpell.LOGGER.info("Points gained: " + pointsGained);
-        TheSpell.LOGGER.info("Before - Stored micro: " + storedMicroPoints + ", Saturation: " + saturationProgress);
-
         if (pointsGained <= 0) {
-            TheSpell.LOGGER.info("No points gained, skipping");
             return;
         }
 
         if (pointsGained == 1.0 || pointsGained == 5.0) {
             saturationProgress += (int) pointsGained;
-            TheSpell.LOGGER.info("Added " + (int) pointsGained + " whole points directly");
         } else {
             int microToAdd = (int) (pointsGained * MICRO_PER_POINT);
             storedMicroPoints += microToAdd;
@@ -105,75 +87,49 @@ public class EssenceComponentImpl implements EssenceComponent {
 
             if (newPoints > 0) {
                 saturationProgress += newPoints;
-                TheSpell.LOGGER.info("Added " + newPoints + " to saturation, now: " + saturationProgress);
             }
-            TheSpell.LOGGER.info("Remaining micro-points: " + storedMicroPoints);
         }
 
-        if (saturationProgress > SATURATION_STEPS) {
-            saturationProgress = SATURATION_STEPS;
-        }
-        TheSpell.LOGGER.info("After - Saturation: " + saturationProgress);
+        if (saturationProgress > SATURATION_STEPS) saturationProgress = SATURATION_STEPS;
 
         updateSaturationModifiers();
     }
 
     @Override
-    public Ranks getRank() {
-        return rank;
-    }
+    public Ranks getRank() { return rank; }
 
     @Override
-    public void setRank(Ranks newRank) {
-        this.rank = newRank != null ? newRank : Ranks.PLAYER;
-    }
+    public void setRank(Ranks newRank) { this.rank = newRank != null ? newRank : Ranks.PLAYER; }
 
     @Override
-    public boolean hasNightmareSeed() {
-        return hasNightmareSeed;
-    }
+    public boolean hasNightmareSeed() { return hasNightmareSeed; }
 
     @Override
-    public void setNightmareSeed(boolean hasSeed) {
-        this.hasNightmareSeed = hasSeed;
-    }
+    public void setNightmareSeed(boolean hasSeed) { this.hasNightmareSeed = hasSeed; }
 
-    // Aspect methods
     @Override
-    public String getAspectId() {
-        return aspectId;
-    }
+    public String getAspectId() { return aspectId; }
 
     @Override
     public void setAspectId(String newAspectId) {
-        // Remove old aspect powers
         if (aspectId != null && entity instanceof Player player) {
             Aspect oldAspect = Aspects.get(Identifier.parse(aspectId));
-            if (oldAspect != null) {
-                oldAspect.removeFrom(player);
-            }
+            if (oldAspect != null) oldAspect.removeFrom(player);
         }
         this.aspectId = newAspectId;
-        // Apply new aspect powers
         if (newAspectId != null && entity instanceof Player player) {
             Aspect newAspect = Aspects.get(Identifier.parse(newAspectId));
-            if (newAspect != null) {
-                newAspect.applyTo(player);
-            }
+            if (newAspect != null) newAspect.applyTo(player);
         }
     }
 
-    // Helper to apply aspect on login
     public void applyAspectToPlayer() {
         if (aspectId != null && entity instanceof Player player) {
             Aspect aspect = Aspects.get(Identifier.parse(aspectId));
-            if (aspect != null) {
-                aspect.applyTo(player);
-            }
+            if (aspect != null) aspect.applyTo(player);
         }
     }
 
-    // Saturation modifiers update
     @Override
     public void updateSaturationModifiers() {
         if (!(entity instanceof Player player)) return;
@@ -199,9 +155,27 @@ public class EssenceComponentImpl implements EssenceComponent {
     }
 
     @Override
-    public void readData(ValueInput input) {
-        TheSpell.LOGGER.info("Loading Essence data from ValueInput");
+    public void tickRegen() {
+        if (++regenTimer >= 20) {
+            regenTimer = 0;
+            if (currentEssence < getMaxEssence()) {
+                currentEssence++;
+            }
+        }
+    }
 
+    @Override
+    public void writeData(ValueOutput output) {
+        output.putInt("CurrentEssence", currentEssence);
+        output.putInt("StoredMicroPoints", storedMicroPoints);
+        output.putInt("SaturationProgress", saturationProgress);
+        output.putString("Rank", rank.name());
+        output.putInt("NightmareSeed", hasNightmareSeed ? 1 : 0);
+        if (aspectId != null) output.putString("AspectId", aspectId);
+    }
+
+    @Override
+    public void readData(ValueInput input) {
         currentEssence = input.getInt("CurrentEssence").orElse(0);
         storedMicroPoints = input.getInt("StoredMicroPoints").orElse(0);
         saturationProgress = input.getInt("SaturationProgress").orElse(0);
@@ -214,40 +188,9 @@ public class EssenceComponentImpl implements EssenceComponent {
         }
 
         hasNightmareSeed = input.getInt("NightmareSeed").orElse(0) != 0;
-
-        // Load aspectId (stored as full identifier string)
         aspectId = input.getString("AspectId").orElse(null);
 
-        TheSpell.LOGGER.info("Loaded: essence=" + currentEssence +
-                ", micro=" + storedMicroPoints +
-                ", sat=" + saturationProgress +
-                ", rank=" + rank +
-                ", seed=" + hasNightmareSeed +
-                ", aspect=" + aspectId);
-
-        // Apply saturation modifiers and aspect after loading
         updateSaturationModifiers();
         applyAspectToPlayer();
-    }
-
-    @Override
-    public void writeData(ValueOutput output) {
-        TheSpell.LOGGER.info("Saving Essence data to ValueOutput");
-
-        output.putInt("CurrentEssence", currentEssence);
-        output.putInt("StoredMicroPoints", storedMicroPoints);
-        output.putInt("SaturationProgress", saturationProgress);
-        output.putString("Rank", rank.name());
-        output.putInt("NightmareSeed", hasNightmareSeed ? 1 : 0);
-        if (aspectId != null) {
-            output.putString("AspectId", aspectId);
-        }
-
-        TheSpell.LOGGER.info("Saved: essence=" + currentEssence +
-                ", micro=" + storedMicroPoints +
-                ", sat=" + saturationProgress +
-                ", rank=" + rank +
-                ", seed=" + hasNightmareSeed +
-                ", aspect=" + aspectId);
     }
 }

@@ -46,7 +46,8 @@
 	"custom": {
 		"cardinal-components": [
 			"the-spell:rank",
-			"the-spell:essence"
+			"the-spell:essence",
+			"the-spell:nightmare_instance"
 		]
 	}
 }
