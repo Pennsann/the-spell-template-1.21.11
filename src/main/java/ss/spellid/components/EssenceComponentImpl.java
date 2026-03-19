@@ -30,6 +30,14 @@ public class EssenceComponentImpl implements EssenceComponent {
     private boolean hasNightmareSeed = false;
     private String aspectId = null;
     private int regenTimer = 0;
+    private long sleeperStartTime = 0;
+    private boolean sentToDreamRealm = false;
+
+    // Anchor fields
+    private int anchorX = 0;
+    private int anchorY = 0;
+    private int anchorZ = 0;
+    private boolean hasAnchor = false;
 
     private final Entity entity;
 
@@ -62,6 +70,12 @@ public class EssenceComponentImpl implements EssenceComponent {
 
     @Override
     public int getSaturationMax() { return SATURATION_STEPS; }
+
+    @Override
+    public void setSaturationProgress(int value) {
+        this.saturationProgress = Math.max(0, Math.min(value, SATURATION_STEPS));
+        updateSaturationModifiers();
+    }
 
     @Override
     public void absorbFragment(FragmentTier fragment) {
@@ -158,10 +172,53 @@ public class EssenceComponentImpl implements EssenceComponent {
     public void tickRegen() {
         if (++regenTimer >= 20) {
             regenTimer = 0;
-            if (currentEssence < getMaxEssence()) {
-                currentEssence++;
+            Ranks rank = RankComponentInitializer.RANK_KEY.get(entity).getRank();
+            int rate = rank.getEssenceRegenRate();
+            if (rate > 0 && currentEssence < getMaxEssence()) {
+                currentEssence = Math.min(currentEssence + rate, getMaxEssence());
             }
         }
+    }
+
+    @Override
+    public long getSleeperStartTime() { return sleeperStartTime; }
+
+    @Override
+    public void setSleeperStartTime(long time) { this.sleeperStartTime = time; }
+
+    @Override
+    public boolean isSentToDreamRealm() { return sentToDreamRealm; }
+
+    @Override
+    public void setSentToDreamRealm(boolean sent) { this.sentToDreamRealm = sent; }
+
+    // Anchor methods
+    @Override
+    public boolean hasAnchor() { return hasAnchor; }
+
+    @Override
+    public void setAnchor(int x, int y, int z) {
+        this.anchorX = x;
+        this.anchorY = y;
+        this.anchorZ = z;
+        this.hasAnchor = true;
+    }
+
+    @Override
+    public int getAnchorX() { return anchorX; }
+
+    @Override
+    public int getAnchorY() { return anchorY; }
+
+    @Override
+    public int getAnchorZ() { return anchorZ; }
+
+    @Override
+    public void clearAnchor() {
+        this.hasAnchor = false;
+        this.anchorX = 0;
+        this.anchorY = 0;
+        this.anchorZ = 0;
     }
 
     @Override
@@ -172,6 +229,13 @@ public class EssenceComponentImpl implements EssenceComponent {
         output.putString("Rank", rank.name());
         output.putInt("NightmareSeed", hasNightmareSeed ? 1 : 0);
         if (aspectId != null) output.putString("AspectId", aspectId);
+        output.putLong("SleeperStartTime", sleeperStartTime);
+        output.putInt("SentToDreamRealm", sentToDreamRealm ? 1 : 0);
+        // Anchor
+        output.putInt("AnchorX", anchorX);
+        output.putInt("AnchorY", anchorY);
+        output.putInt("AnchorZ", anchorZ);
+        output.putInt("HasAnchor", hasAnchor ? 1 : 0);
     }
 
     @Override
@@ -189,6 +253,14 @@ public class EssenceComponentImpl implements EssenceComponent {
 
         hasNightmareSeed = input.getInt("NightmareSeed").orElse(0) != 0;
         aspectId = input.getString("AspectId").orElse(null);
+        sleeperStartTime = input.getLong("SleeperStartTime").orElse(0L);
+        sentToDreamRealm = input.getInt("SentToDreamRealm").orElse(0) != 0;
+
+        // Anchor
+        anchorX = input.getInt("AnchorX").orElse(0);
+        anchorY = input.getInt("AnchorY").orElse(0);
+        anchorZ = input.getInt("AnchorZ").orElse(0);
+        hasAnchor = input.getInt("HasAnchor").orElse(0) != 0;
 
         updateSaturationModifiers();
         applyAspectToPlayer();

@@ -3,6 +3,7 @@ package ss.spellid;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.commands.Commands;
 import net.minecraft.core.registries.Registries;
@@ -11,6 +12,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import org.slf4j.Logger;
@@ -19,10 +21,12 @@ import ss.spellid.aspect.Aspect;
 import ss.spellid.aspect.Aspects;
 import ss.spellid.block.ModBlocks;
 import ss.spellid.components.RankComponentInitializer;
+import ss.spellid.dream.DreamRealmLoader;
 import ss.spellid.effect.ModEffects;
 import ss.spellid.event.NightmareCompletionHandler;
 import ss.spellid.event.SleepHandler;
 import ss.spellid.event.EssenceRegenHandler;
+import ss.spellid.event.WinterSolsticeHandler;
 import ss.spellid.item.ModItems;
 import ss.spellid.ranks.Ranks;
 
@@ -43,6 +47,11 @@ public class TheSpell implements ModInitializer {
 		ModEffects.register();
 		EssenceRegenHandler.register();
 
+		// Copy Dream Realm files at server start
+		ServerLifecycleEvents.SERVER_STARTING.register(server -> {
+			DreamRealmLoader.ensureDimensionFilesExist(server);
+		});
+
 		// Join event: display current rank
 		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
 			try {
@@ -59,6 +68,7 @@ public class TheSpell implements ModInitializer {
 		SleepHandler.register();
 		NightmareCompletionHandler.register();
 		Aspects.init();
+		WinterSolsticeHandler.register();
 
 		// Register commands
 		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
@@ -198,6 +208,52 @@ public class TheSpell implements ModInitializer {
 												LOGGER.info("Aspect set for {}: {}", player.getName().getString(), aspectId);
 												return 1;
 											})))));
+
+			// Debug command for detailed stats
+			dispatcher.register(Commands.literal("spell")
+					.then(Commands.literal("debug")
+							.then(Commands.literal("stats")
+									.executes(context -> {
+										ServerPlayer player = context.getSource().getPlayerOrException();
+										var rankComp = RANK_KEY.get(player);
+										var essenceComp = ESSENCE.get(player);
+										var healthAttr = player.getAttribute(Attributes.MAX_HEALTH);
+										var speedAttr = player.getAttribute(Attributes.MOVEMENT_SPEED);
+										var attackAttr = player.getAttribute(Attributes.ATTACK_DAMAGE);
+
+										player.displayClientMessage(Component.literal("§6=== Player Stats ==="), false);
+										player.displayClientMessage(Component.literal("§6Rank: §f" + rankComp.getRank().getDisplayName()), false);
+										player.displayClientMessage(Component.literal("§6Health: §f" + player.getHealth() + " / " + player.getMaxHealth()), false);
+										player.displayClientMessage(Component.literal("§6Speed: §f" + (speedAttr != null ? speedAttr.getValue() : 0)), false);
+										player.displayClientMessage(Component.literal("§6Attack: §f" + (attackAttr != null ? attackAttr.getValue() : 0)), false);
+										player.displayClientMessage(Component.literal("§6Essence: §f" + essenceComp.getCurrentEssence() + " / " + essenceComp.getMaxEssence()), false);
+										player.displayClientMessage(Component.literal("§6Saturation: §f" + essenceComp.getSaturationProgress() + "/" + essenceComp.getSaturationMax()), false);
+										return 1;
+									}))
+							.then(Commands.literal("regen")
+									.executes(context -> {
+										ServerPlayer player = context.getSource().getPlayerOrException();
+										var essence = ESSENCE.get(player);
+										int food = player.getFoodData().getFoodLevel();
+										player.displayClientMessage(Component.literal("§6Food: §f" + food + " / 20"), false);
+										player.displayClientMessage(Component.literal("§6Essence: §f" + essence.getCurrentEssence() + " / " + essence.getMaxEssence()), false);
+										essence.tickRegen();
+										player.displayClientMessage(Component.literal("§aAfter regen tick: " + essence.getCurrentEssence() + " / " + essence.getMaxEssence()), false);
+										return 1;
+									}))));
+
+			// Test solstice command (already exists, but included for completeness)
+			dispatcher.register(Commands.literal("spell")
+					.then(Commands.literal("test")
+							.then(Commands.literal("solstice")
+									.executes(context -> {
+										ServerPlayer player = context.getSource().getPlayerOrException();
+										var essence = ESSENCE.get(player);
+										long currentTime = player.level().getServer().overworld().getGameTime();
+										essence.setSleeperStartTime(currentTime - (3 * 24000));
+										WinterSolsticeHandler.forceTeleport(player);
+										return 1;
+									}))));
 		});
 	}
 }

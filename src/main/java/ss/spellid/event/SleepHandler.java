@@ -12,7 +12,6 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import ss.spellid.TheSpell;
 import ss.spellid.components.RankComponentInitializer;
-import ss.spellid.components.NightmareInstance;
 import ss.spellid.effect.ModEffects;
 import ss.spellid.nightmare.Nightmare;
 import ss.spellid.nightmare.NightmareManager;
@@ -24,16 +23,22 @@ import static ss.spellid.components.RankComponentInitializer.RANK_KEY;
 import static ss.spellid.components.RankComponentInitializer.ESSENCE;
 
 public class SleepHandler {
+    private static final ResourceKey<Level> DREAM_REALM_KEY = ResourceKey.create(
+            Registries.DIMENSION,
+            Identifier.fromNamespaceAndPath(TheSpell.MOD_ID, "dream_realm")
+    );
+
     public static void register() {
         EntitySleepEvents.START_SLEEPING.register((entity, sleepingPos) -> {
             if (entity instanceof ServerPlayer player) {
+                var rankComp = RANK_KEY.get(player);
                 var essence = ESSENCE.get(player);
-                boolean hasSeed = essence.hasNightmareSeed();
+                Ranks currentRank = rankComp.getRank();
 
-                // 2% chance to get nightmare seed (only if they don't have it AND rank is PLAYER)
-                if (!hasSeed && player.getRandom().nextFloat() < 0.02f) {
-                    var rankComp = RANK_KEY.get(player);
-                    if (rankComp.getRank() == Ranks.PLAYER) {
+                // 1. Seed chance for PLAYER
+                if (currentRank == Ranks.PLAYER) {
+                    boolean hasSeed = essence.hasNightmareSeed();
+                    if (!hasSeed && player.getRandom().nextFloat() < 0.02f) {
                         essence.setNightmareSeed(true);
                         player.addEffect(new net.minecraft.world.effect.MobEffectInstance(
                                 ModEffects.NIGHTMARE_SEED,
@@ -47,52 +52,78 @@ public class SleepHandler {
                     }
                 }
 
-                // If they have the seed and are PLAYER, trigger First Nightmare
-                if (hasSeed) {
-                    var rankComp = RANK_KEY.get(player);
-                    Ranks currentRank = rankComp.getRank();
-                    if (currentRank == Ranks.PLAYER) {
-                        // Get a random uncompleted solo nightmare
-                        Identifier nightmareId = NightmareManager.getRandomUncompletedSolo(player);
-                        if (nightmareId == null) {
-                            player.displayClientMessage(Component.literal("§cNo nightmares remain..."), false);
-                            return;
-                        }
-                        Nightmare nightmare = NightmareManager.get(nightmareId);
-                        if (nightmare == null) return;
-                        ResourceKey<Level> nightmareKey = nightmare.dimensionKey();
+                // 2. If PLAYER with seed, enter First Nightmare
+                if (currentRank == Ranks.PLAYER && essence.hasNightmareSeed()) {
+                    Identifier nightmareId = NightmareManager.getRandomUncompletedSolo(player);
+                    if (nightmareId == null) {
+                        player.displayClientMessage(Component.literal("§cNo nightmares remain..."), false);
+                        return;
+                    }
+                    Nightmare nightmare = NightmareManager.get(nightmareId);
+                    if (nightmare == null) return;
+                    ResourceKey<Level> nightmareKey = nightmare.dimensionKey();
 
-                        // Attach nightmare instance
-                        var instance = RankComponentInitializer.NIGHTMARE_INSTANCE.get(player);
-                        instance.setNightmareId(nightmareId);
-                        instance.setCompleted(false);
+                    var instance = RankComponentInitializer.NIGHTMARE_INSTANCE.get(player);
+                    instance.setNightmareId(nightmareId);
+                    instance.setCompleted(false);
 
-                        ServerLevel nightmareLevel = player.level().getServer().getLevel(nightmareKey);
-                        if (nightmareLevel != null) {
-                            double x = nightmareLevel.getRespawnData().pos().getX();
-                            double y = nightmareLevel.getRespawnData().pos().getY();
-                            double z = nightmareLevel.getRespawnData().pos().getZ();
+                    ServerLevel nightmareLevel = player.level().getServer().getLevel(nightmareKey);
+                    if (nightmareLevel != null) {
+                        double x = nightmareLevel.getRespawnData().pos().getX();
+                        double y = nightmareLevel.getRespawnData().pos().getY();
+                        double z = nightmareLevel.getRespawnData().pos().getZ();
 
+                        player.teleportTo(
+                                nightmareLevel,
+                                x, y, z,
+                                Set.of(),
+                                player.getYRot(),
+                                player.getXRot(),
+                                false
+                        );
+                        player.displayClientMessage(Component.literal("§5You awaken in a strange, empty realm... the First Nightmare begins!"), false);
+
+                        BlockPos completionPos = nightmareLevel.getRespawnData().pos().offset(2, 0, 0);
+                        nightmareLevel.setBlock(completionPos, Blocks.GOLD_BLOCK.defaultBlockState(), 3);
+                    } else {
+                        player.displayClientMessage(Component.literal("§cNightmare dimension not found!"), false);
+                    }
+                    return; // exit after nightmare entry
+                }
+
+                // 3. Re‑entry for ranks with a Dream Realm anchor (SLEEPER, AWAKENED, etc.)
+                if (currentRank.hasSoulCore() && essence.isSentToDreamRealm()) {
+                    // Don't teleport if already in Dream Realm
+                    if (player.level().dimension().equals(DREAM_REALM_KEY)) {
+                        player.displayClientMessage(Component.literal("§7You are already in the Dream Realm."), false);
+                        return;
+                    }
+
+                    if (essence.hasAnchor()) {
+                        ServerLevel dreamRealm = player.level().getServer().getLevel(DREAM_REALM_KEY);
+                        if (dreamRealm != null) {
+                            BlockPos anchorPos = new BlockPos(essence.getAnchorX(), essence.getAnchorY(), essence.getAnchorZ());
                             player.teleportTo(
-                                    nightmareLevel,
-                                    x, y, z,
+                                    dreamRealm,
+                                    anchorPos.getX() + 0.5, anchorPos.getY(), anchorPos.getZ() + 0.5,
                                     Set.of(),
                                     player.getYRot(),
                                     player.getXRot(),
                                     false
                             );
-                            player.displayClientMessage(Component.literal("§5You awaken in a strange, empty realm... the First Nightmare begins!"), false);
-
-                            // Place a gold block at the completion position (two blocks east of spawn)
-                            BlockPos completionPos = nightmareLevel.getRespawnData().pos().offset(2, 0, 0);
-                            nightmareLevel.setBlock(completionPos, Blocks.GOLD_BLOCK.defaultBlockState(), 3);
+                            String rankName = currentRank.getDisplayName();
+                            player.displayClientMessage(Component.literal("§5As a " + rankName + ", you slip into the Dream Realm through slumber..."), false);
                         } else {
-                            player.displayClientMessage(Component.literal("§cNightmare dimension not found!"), false);
+                            player.displayClientMessage(Component.literal("§cDream Realm dimension not found!"), false);
                         }
                     } else {
-                        player.displayClientMessage(Component.literal("§cYou are already awakened and cannot enter another First Nightmare."), false);
+                        player.displayClientMessage(Component.literal("§cYou have no anchor in the Dream Realm. Seek a Citadel Gateway."), false);
                     }
+                    return;
                 }
+
+                // 4. For others (PLAYER without seed, or any other case), normal sleep
+                player.displayClientMessage(Component.literal("§7You sleep peacefully."), false);
             }
         });
     }

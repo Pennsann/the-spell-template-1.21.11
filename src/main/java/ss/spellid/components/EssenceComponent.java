@@ -16,6 +16,7 @@ public interface EssenceComponent extends Component {
     void addCurrentEssence(int amount);
     int getMaxEssence();
     int getSaturationProgress();
+    void setSaturationProgress(int value);
     int getSaturationMax();
     void absorbFragment(FragmentTier fragment);
     Ranks getRank();
@@ -24,8 +25,20 @@ public interface EssenceComponent extends Component {
     void setNightmareSeed(boolean hasSeed);
     void setAspectId(String aspectId);
     String getAspectId();
-    void tickRegen(); // new method
-
-    // Saturation modifiers update
+    void tickRegen();
     void updateSaturationModifiers();
+
+    // Anchor methods
+    boolean hasAnchor();
+    void setAnchor(int x, int y, int z);
+    int getAnchorX();
+    int getAnchorY();
+    int getAnchorZ();
+    void clearAnchor();
+
+    // Sleeper timer methods
+    long getSleeperStartTime();
+    void setSleeperStartTime(long time);
+    boolean isSentToDreamRealm();
+    void setSentToDreamRealm(boolean sent);
 }
