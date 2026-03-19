@@ -10,6 +10,7 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import ss.spellid.TheSpell;
+import ss.spellid.aspect.ability.FireballAbility;
 
 import java.util.HashMap;
 import java.util.List;
@@ -37,7 +38,8 @@ public class Aspects {
                                     AttributeModifier.Operation.ADD_VALUE,
                                     "survivor_speed"
                             )
-                    )
+                    ),
+                    null // No active ability for Survivor yet
             )
     );
 
@@ -45,7 +47,7 @@ public class Aspects {
             new Aspect(
                     Identifier.fromNamespaceAndPath(TheSpell.MOD_ID, "fire"),
                     Component.literal("Fire Aspect"),
-                    Component.literal("Fire resistance, sets attackers on fire"),
+                    Component.literal("Fire resistance, sets attackers on fire, and shoot fireballs"),
                     new ItemStack(Items.BLAZE_POWDER),
                     List.of(
                             new PotionEffectPower(new MobEffectInstance(MobEffects.FIRE_RESISTANCE, -1, 0, false, false, true)),
@@ -55,7 +57,8 @@ public class Aspects {
                                     AttributeModifier.Operation.ADD_VALUE,
                                     "fire_attack"
                             )
-                    )
+                    ),
+                    new FireballAbility() // Fire Aspect gets the fireball ability
             )
     );
 
@@ -65,7 +68,8 @@ public class Aspects {
                     Component.literal("Flight Aspect"),
                     Component.literal("Grants creative flight (WIP)"),
                     new ItemStack(Items.FEATHER),
-                    List.of()
+                    List.of(),
+                    null
             )
     );
 

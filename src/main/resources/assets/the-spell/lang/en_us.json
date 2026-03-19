@@ -2,5 +2,7 @@
   "item.the-spell.dormant_fragment": "Dormant fragment",
   "itemGroup.the-spell": "The spell",
   "effect.the-spell.nightmare_seed": "§5Nightmare Seed",
-  "item.the-spell.citadel_gateway": "Citadel Gateway"
+  "item.the-spell.citadel_gateway": "Citadel Gateway",
+  "key.the-spell.ability": "Use Aspect Ability",
+  "category.the-spell.general": "The Spell"
 }

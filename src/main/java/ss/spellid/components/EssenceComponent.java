@@ -41,4 +41,7 @@ public interface EssenceComponent extends Component {
     void setSleeperStartTime(long time);
     boolean isSentToDreamRealm();
     void setSentToDreamRealm(boolean sent);
+
+    long getLastAbilityUseTime();
+    void setLastAbilityUseTime(long time);
 }

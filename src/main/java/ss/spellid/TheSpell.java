@@ -4,7 +4,9 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.commands.Commands;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
@@ -19,6 +21,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ss.spellid.aspect.Aspect;
 import ss.spellid.aspect.Aspects;
+import ss.spellid.aspect.ability.AspectAbility;
 import ss.spellid.block.ModBlocks;
 import ss.spellid.components.RankComponentInitializer;
 import ss.spellid.dream.DreamRealmLoader;
@@ -28,6 +31,7 @@ import ss.spellid.event.SleepHandler;
 import ss.spellid.event.EssenceRegenHandler;
 import ss.spellid.event.WinterSolsticeHandler;
 import ss.spellid.item.ModItems;
+import ss.spellid.network.AbilityUsePayload;
 import ss.spellid.ranks.Ranks;
 
 import java.util.Set;
@@ -69,6 +73,60 @@ public class TheSpell implements ModInitializer {
 		NightmareCompletionHandler.register();
 		Aspects.init();
 		WinterSolsticeHandler.register();
+
+		// Register payload type for ability key
+		PayloadTypeRegistry.playC2S().register(AbilityUsePayload.TYPE, AbilityUsePayload.CODEC);
+
+		// Register network receiver for ability key
+		ServerPlayNetworking.registerGlobalReceiver(AbilityUsePayload.TYPE, (payload, context) -> {
+			context.server().execute(() -> {
+				ServerPlayer player = context.player();
+				var essence = ESSENCE.get(player);
+				var rankComp = RANK_KEY.get(player);
+
+				// Only Awakened and higher can use active abilities
+				if (rankComp.getRank().ordinal() < Ranks.AWAKENED.ordinal()) {
+					player.displayClientMessage(Component.literal("§cYou must be Awakened to use active abilities!"), true);
+					return;
+				}
+
+				var aspectId = essence.getAspectId();
+				if (aspectId == null) {
+					player.displayClientMessage(Component.literal("§cYou have no aspect!"), true);
+					return;
+				}
+				Aspect aspect = Aspects.get(Identifier.parse(aspectId));
+				if (aspect == null) return;
+				AspectAbility ability = aspect.getAbility();
+				if (ability == null) {
+					player.displayClientMessage(Component.literal("§cYour aspect has no active ability!"), true);
+					return;
+				}
+
+				// Check cooldown
+				long currentTime = player.level().getGameTime();
+				long lastUse = essence.getLastAbilityUseTime();
+				int cooldown = ability.getCooldownTicks();
+				if (cooldown > 0 && currentTime - lastUse < cooldown) {
+					// Optional: send a message or just ignore
+					return;
+				}
+
+				// Check essence
+				int cost = ability.getEssenceCost();
+				if (essence.getCurrentEssence() < cost) {
+					player.displayClientMessage(Component.literal("§cNot enough essence!"), true);
+					return;
+				}
+
+				// Use ability
+				if (ability.canUse(player)) {
+					ability.use(player);
+					essence.addCurrentEssence(-cost);
+					essence.setLastAbilityUseTime(currentTime);
+				}
+			});
+		});
 
 		// Register commands
 		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
@@ -165,7 +223,7 @@ public class TheSpell implements ModInitializer {
 										return 1;
 									}))));
 
-			// Aspect commands (optional – can be kept for testing)
+			// Aspect commands (improved set command)
 			dispatcher.register(Commands.literal("spell")
 					.then(Commands.literal("aspect")
 							.then(Commands.literal("get")
@@ -191,12 +249,20 @@ public class TheSpell implements ModInitializer {
 												String id = context.getArgument("id", String.class);
 												Player player = context.getSource().getPlayerOrException();
 												Identifier aspectId;
-												try {
-													aspectId = Identifier.parse(id);
-												} catch (Exception e) {
-													player.displayClientMessage(Component.literal("§cInvalid aspect ID format. Use namespace:path (e.g., the-spell:survivor)"), false);
-													return 0;
+
+												// If the id contains a colon, parse it as-is; otherwise prepend our mod id
+												if (id.contains(":")) {
+													try {
+														aspectId = Identifier.parse(id);
+													} catch (Exception e) {
+														player.displayClientMessage(Component.literal("§cInvalid aspect ID format. Use namespace:path (e.g., the-spell:survivor)"), false);
+														return 0;
+													}
+												} else {
+													aspectId = Identifier.fromNamespaceAndPath(TheSpell.MOD_ID, id);
 												}
+
+												LOGGER.info("Looking up aspect with ID: {}", aspectId);
 												Aspect aspect = Aspects.get(aspectId);
 												if (aspect == null) {
 													player.displayClientMessage(Component.literal("§cAspect not found: " + id), false);
@@ -209,7 +275,7 @@ public class TheSpell implements ModInitializer {
 												return 1;
 											})))));
 
-			// Debug command for detailed stats
+			// Debug commands for stats and regen
 			dispatcher.register(Commands.literal("spell")
 					.then(Commands.literal("debug")
 							.then(Commands.literal("stats")
@@ -242,7 +308,7 @@ public class TheSpell implements ModInitializer {
 										return 1;
 									}))));
 
-			// Test solstice command (already exists, but included for completeness)
+			// Test solstice command
 			dispatcher.register(Commands.literal("spell")
 					.then(Commands.literal("test")
 							.then(Commands.literal("solstice")

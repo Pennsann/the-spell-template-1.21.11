@@ -39,6 +39,8 @@ public class EssenceComponentImpl implements EssenceComponent {
     private int anchorZ = 0;
     private boolean hasAnchor = false;
 
+    private long lastAbilityUseTime = 0;
+
     private final Entity entity;
 
     public EssenceComponentImpl(Entity entity) {
@@ -222,6 +224,12 @@ public class EssenceComponentImpl implements EssenceComponent {
     }
 
     @Override
+    public long getLastAbilityUseTime() { return lastAbilityUseTime; }
+
+    @Override
+    public void setLastAbilityUseTime(long time) { this.lastAbilityUseTime = time; }
+
+    @Override
     public void writeData(ValueOutput output) {
         output.putInt("CurrentEssence", currentEssence);
         output.putInt("StoredMicroPoints", storedMicroPoints);
@@ -236,6 +244,7 @@ public class EssenceComponentImpl implements EssenceComponent {
         output.putInt("AnchorY", anchorY);
         output.putInt("AnchorZ", anchorZ);
         output.putInt("HasAnchor", hasAnchor ? 1 : 0);
+        output.putLong("LastAbilityUseTime", lastAbilityUseTime);
     }
 
     @Override
@@ -261,6 +270,7 @@ public class EssenceComponentImpl implements EssenceComponent {
         anchorY = input.getInt("AnchorY").orElse(0);
         anchorZ = input.getInt("AnchorZ").orElse(0);
         hasAnchor = input.getInt("HasAnchor").orElse(0) != 0;
+        lastAbilityUseTime = input.getLong("LastAbilityUseTime").orElse(0L);
 
         updateSaturationModifiers();
         applyAspectToPlayer();
