@@ -38,9 +38,13 @@ public class RankComponentImpl implements RankComponent {
         if (oldRank != this.rank) {
             TheSpell.LOGGER.info("Rank change for {}: {} -> {}", player.getName().getString(), oldRank, this.rank);
             applyRankModifiers(oldRank, this.rank);
+
+            // Update saturation modifiers because max percent may have changed
+            EssenceComponent essence = RankComponentInitializer.ESSENCE.get(player);
+            essence.updateSaturationModifiers();
+
             // If becoming Sleeper for the first time, record start time
             if (this.rank == Ranks.SLEEPER && oldRank != Ranks.SLEEPER) {
-                EssenceComponent essence = RankComponentInitializer.ESSENCE.get(player);
                 if (essence.getSleeperStartTime() == 0) {
                     long time = player.level().getServer().overworld().getGameTime();
                     essence.setSleeperStartTime(time);

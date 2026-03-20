@@ -8,13 +8,15 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.LevelData;
 import net.minecraft.world.phys.BlockHitResult;
 import ss.spellid.TheSpell;
-import ss.spellid.components.EssenceComponent;
 import ss.spellid.components.RankComponent;
 import ss.spellid.components.RankComponentInitializer;
 import ss.spellid.ranks.Ranks;
@@ -34,50 +36,76 @@ public class CitadelGatewayBlock extends Block {
         }
 
         if (player instanceof ServerPlayer serverPlayer) {
-            ResourceKey<Level> dreamRealmKey = ResourceKey.create(
-                    Registries.DIMENSION,
-                    Identifier.fromNamespaceAndPath(TheSpell.MOD_ID, "dream_realm")
-            );
-            if (!level.dimension().equals(dreamRealmKey)) {
-                serverPlayer.displayClientMessage(Component.literal("§cThis gateway only works in the Dream Realm!"), false);
-                return InteractionResult.FAIL;
-            }
-
             RankComponent rankComp = RankComponentInitializer.RANK_KEY.get(serverPlayer);
             Ranks currentRank = rankComp.getRank();
 
-            if (currentRank == Ranks.SLEEPER) {
-                rankComp.setRank(Ranks.AWAKENED);
+            // If player is in the Dream Realm dimension
+            Identifier dreamRealmId = Identifier.fromNamespaceAndPath(TheSpell.MOD_ID, "dream_realm");
+            ResourceKey<Level> dreamRealmKey = ResourceKey.create(Registries.DIMENSION, dreamRealmId);
 
-                EssenceComponent essence = RankComponentInitializer.ESSENCE.get(serverPlayer);
-                essence.setSaturationProgress(0);
+            if (level.dimension().equals(dreamRealmKey)) {
+                // In Dream Realm
+                if (currentRank == Ranks.SLEEPER) {
+                    // Rank up to AWAKENED
+                    rankComp.setRank(Ranks.AWAKENED);
+                    serverPlayer.displayClientMessage(
+                            Component.literal("§dThe Citadel's power flows through you... You are now Awakened!"),
+                            false
+                    );
 
-                ServerLevel overworld = serverPlayer.level().getServer().overworld();
-                BlockPos spawnPos = overworld.getRespawnData().pos();
-                serverPlayer.teleportTo(
-                        overworld,
-                        spawnPos.getX() + 0.5, spawnPos.getY(), spawnPos.getZ() + 0.5,
-                        Set.of(),
-                        serverPlayer.getYRot(),
-                        serverPlayer.getXRot(),
-                        false
-                );
+                    // Set respawn point back to overworld spawn
+                    ServerLevel overworld = serverPlayer.level().getServer().overworld();
+                    BlockPos spawnPos = overworld.getRespawnData().pos();
+                    ServerPlayer.RespawnConfig respawnConfig = new ServerPlayer.RespawnConfig(
+                            LevelData.RespawnData.of(overworld.dimension(), spawnPos, serverPlayer.getYRot(), serverPlayer.getXRot()),
+                            true
+                    );
+                    serverPlayer.setRespawnPosition(respawnConfig, true);
 
-                // Do NOT change respawn point – keep it at the Dream Realm citadel
+                    // Teleport to overworld spawn
+                    serverPlayer.teleportTo(
+                            overworld,
+                            spawnPos.getX() + 0.5, spawnPos.getY(), spawnPos.getZ() + 0.5,
+                            Set.of(),
+                            serverPlayer.getYRot(),
+                            serverPlayer.getXRot(),
+                            false
+                    );
 
-                serverPlayer.displayClientMessage(
-                        Component.literal("§dYou have Awakened! The power of the Dream Realm now flows through you."),
-                        false
-                );
-                serverPlayer.displayClientMessage(
-                        Component.literal("§bYou feel stronger, faster, and more resilient."),
+                } else if (currentRank.ordinal() >= Ranks.AWAKENED.ordinal()) {
+                    // Already Awakened or higher: just teleport back to overworld
+                    ServerLevel overworld = serverPlayer.level().getServer().overworld();
+                    BlockPos spawnPos = overworld.getRespawnData().pos();
+
+                    serverPlayer.teleportTo(
+                            overworld,
+                            spawnPos.getX() + 0.5, spawnPos.getY(), spawnPos.getZ() + 0.5,
+                            Set.of(),
+                            serverPlayer.getYRot(),
+                            serverPlayer.getXRot(),
+                            false
+                    );
+
+                    serverPlayer.displayClientMessage(
+                            Component.literal("§aYou return to the waking world."),
+                            false
+                    );
+                } else {
+                    // Should not happen (PLAYER rank can't be in Dream Realm normally)
+                    serverPlayer.displayClientMessage(
+                            Component.literal("§cYou are not yet ready to use this gateway."),
+                            false
+                    );
+                }
+            } else {
+                // Not in Dream Realm – maybe just set spawn point (original behavior)
+                ServerPlayer.RespawnConfig respawnConfig = new ServerPlayer.RespawnConfig(
+                        LevelData.RespawnData.of(level.dimension(), pos, player.getYRot(), player.getXRot()),
                         true
                 );
-                TheSpell.LOGGER.info("Player {} awakened in Dream Realm", serverPlayer.getName().getString());
-
-            } else {
+                serverPlayer.setRespawnPosition(respawnConfig, true);
                 serverPlayer.displayClientMessage(
-                        Component.literal("§7The gateway hums but does not respond."),
+                        Component.literal("§7Your tether to this Citadel has been renewed."),
                         false
                 );
             }

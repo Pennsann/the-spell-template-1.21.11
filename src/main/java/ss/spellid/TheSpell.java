@@ -323,3 +323,4 @@ public class TheSpell implements ModInitializer {
 		});
 	}
 }
+//DONT FORGET TO MAKE BUFFS BETTER THAN BONUSES OHOHOHOHO 3la ra2y ultor el 2alb ely bynzl HOHOHOHOHOHHOOHOHOOH NYOHOHOHOHOHOHOHOH

@@ -154,20 +154,28 @@ public class EssenceComponentImpl implements EssenceComponent {
         AttributeInstance attackAttr = player.getAttribute(Attributes.ATTACK_DAMAGE);
         if (healthAttr == null || speedAttr == null || attackAttr == null) return;
 
+        // Remove old saturation modifiers
         healthAttr.removeModifier(SATURATION_HEALTH_MODIFIER_ID);
         speedAttr.removeModifier(SATURATION_SPEED_MODIFIER_ID);
         attackAttr.removeModifier(SATURATION_ATTACK_MODIFIER_ID);
 
-        float factor = (float) saturationProgress / SATURATION_STEPS;
-        if (factor <= 0.0f) return;
+        if (saturationProgress <= 0) return;
 
-        double maxHealthBonus = 4.0;
-        double maxSpeedBonus = 0.003;
-        double maxAttackBonus = 0.5;
+        // Get rank's max saturation bonus percentage
+        Ranks rank = RankComponentInitializer.RANK_KEY.get(player).getRank();
+        double maxPercent = rank.getMaxSaturationBonus();
+        if (maxPercent <= 0.0) return;
 
-        healthAttr.addTransientModifier(new AttributeModifier(SATURATION_HEALTH_MODIFIER_ID, maxHealthBonus * factor, AttributeModifier.Operation.ADD_VALUE));
-        speedAttr.addTransientModifier(new AttributeModifier(SATURATION_SPEED_MODIFIER_ID, maxSpeedBonus * factor, AttributeModifier.Operation.ADD_VALUE));
-        attackAttr.addTransientModifier(new AttributeModifier(SATURATION_ATTACK_MODIFIER_ID, maxAttackBonus * factor, AttributeModifier.Operation.ADD_VALUE));
+        // Compute factor (linear with saturation)
+        double factor = (saturationProgress / (double) SATURATION_STEPS) * maxPercent;
+
+        // Apply as ADD_MULTIPLIED_TOTAL (multiplies the total value after all additions)
+        healthAttr.addTransientModifier(new AttributeModifier(
+                SATURATION_HEALTH_MODIFIER_ID, factor, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
+        speedAttr.addTransientModifier(new AttributeModifier(
+                SATURATION_SPEED_MODIFIER_ID, factor, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
+        attackAttr.addTransientModifier(new AttributeModifier(
+                SATURATION_ATTACK_MODIFIER_ID, factor, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
     }
 
     @Override

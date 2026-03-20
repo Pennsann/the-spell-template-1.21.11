@@ -1,21 +1,23 @@
 package ss.spellid.ranks;
 
 public enum Ranks {
-    PLAYER(0, "Unawakened"),
-    SLEEPER(150, "Dormant"),
-    AWAKENED(400,"Awakened"),
-    ASCENDED(1000, "Ascended"),
-    TRANSCENDENT(2500, "Transcendent"),
-    SUPREME(6000, "Supreme"),
-    SACRED(15000, "Sacred"),
-    DIVINE(50000, "Divine");
+    PLAYER(0, "Unawakened", 0.0),
+    SLEEPER(150, "Dormant", 0.05),
+    AWAKENED(400, "Awakened", 0.10),
+    ASCENDED(1000, "Ascended", 0.15),
+    TRANSCENDENT(2500, "Transcendent", 0.20),
+    SUPREME(6000, "Supreme", 0.25),
+    SACRED(15000, "Sacred", 0.30),
+    DIVINE(50000, "Divine", 0.40);
 
     private final int baseMaxEssence;
     private final String displayName;
+    private final double maxSaturationBonus; // decimal, e.g., 0.05 = 5%
 
-    Ranks(int baseMaxEssence, String displayName) {
+    Ranks(int baseMaxEssence, String displayName, double maxSaturationBonus) {
         this.baseMaxEssence = baseMaxEssence;
         this.displayName = displayName;
+        this.maxSaturationBonus = maxSaturationBonus;
     }
 
     public int getBaseMaxEssence() {
@@ -24,6 +26,10 @@ public enum Ranks {
 
     public String getDisplayName() {
         return displayName;
+    }
+
+    public double getMaxSaturationBonus() {
+        return maxSaturationBonus;
     }
 
     public boolean hasSoulCore() {
@@ -56,44 +62,27 @@ public enum Ranks {
         };
     }
 
-    /**
-     * Essence regen rate per second (per 20 ticks).
-     * PLAYER = 0 (no regen), SLEEPER = 1, AWAKENED = 2, ASCENDED = 3, etc.
-     */
     public int getEssenceRegenRate() {
-        return this.ordinal(); // PLAYER ordinal 0 -> 0, SLEEPER 1 -> 1, ...
+        return this.ordinal(); // PLAYER 0, SLEEPER 1, AWAKENED 2, ...
     }
 
-    /**
-     * Determines how many saturation points are gained from absorbing one fragment of the given tier.
-     * Logic:
-     * - rankOrdinal 1 (SLEEPER) matches fragment tier DORMANT (ordinal 0)
-     * - rankOrdinal 2 (AWAKENED) matches fragment tier AWAKENED (ordinal 1)
-     * - etc.
-     * So the matching tier ordinal = rankOrdinal - 1.
-     *
-     * @param fragmentTier the tier of the absorbed fragment
-     * @return saturation points gained (0.0 if cannot absorb)
-     */
     public double getAbsorptionEfficiencyForFragmentTier(FragmentTier fragmentTier) {
         if (!this.hasSoulCore()) {
-            return 0.0; // PLAYER cannot absorb
+            return 0.0;
         }
 
-        int rankOrd = this.ordinal();          // 1 = SLEEPER, 2 = AWAKENED, 3 = ASCENDED, ...
-        int fragOrd = fragmentTier.ordinal();  // 0 = DORMANT, 1 = AWAKENED, 2 = ASCENDED, ...
-
-        // Matching tier for a rank is rankOrd - 1
+        int rankOrd = this.ordinal();
+        int fragOrd = fragmentTier.ordinal();
         int tierDiff = fragOrd - (rankOrd - 1);
 
         if (tierDiff == 0) {
-            return 1.0;  // same tier -> 1 point per fragment
+            return 1.0;
         } else if (tierDiff == 1) {
-            return 5.0;  // one tier higher -> 5 points per fragment
+            return 5.0;
         } else if (tierDiff == -1) {
-            return 0.2;  // one tier lower -> 0.2 point per fragment (5 fragments = 1 point)
+            return 0.2;
         } else {
-            return 0.0;  // more than one tier apart -> cannot absorb
+            return 0.0;
         }
     }
 }
