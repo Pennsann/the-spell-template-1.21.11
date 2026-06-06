@@ -47,7 +47,8 @@
 		"cardinal-components": [
 			"the-spell:rank",
 			"the-spell:essence",
-			"the-spell:nightmare_instance"
+			"the-spell:nightmare_instance",
+			"the-spell:flaw"
 		]
 	}
 }

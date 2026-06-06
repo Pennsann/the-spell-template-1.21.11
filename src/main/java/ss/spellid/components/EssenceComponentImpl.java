@@ -11,6 +11,7 @@ import net.minecraft.world.level.storage.ValueOutput;
 import ss.spellid.TheSpell;
 import ss.spellid.aspect.Aspect;
 import ss.spellid.aspect.Aspects;
+import ss.spellid.aspect.MeleeAttackAbility;
 import ss.spellid.ranks.FragmentTier;
 import ss.spellid.ranks.Ranks;
 
@@ -40,6 +41,9 @@ public class EssenceComponentImpl implements EssenceComponent {
     private boolean hasAnchor = false;
 
     private long lastAbilityUseTime = 0;
+
+    // Pending melee ability (transient – not saved)
+    private transient MeleeAttackAbility pendingMeleeAbility = null;
 
     private final Entity entity;
 
@@ -237,6 +241,28 @@ public class EssenceComponentImpl implements EssenceComponent {
     @Override
     public void setLastAbilityUseTime(long time) { this.lastAbilityUseTime = time; }
 
+    // Pending melee ability
+    @Override
+    public void setPendingMeleeAbility(MeleeAttackAbility ability) {
+        this.pendingMeleeAbility = ability;
+    }
+
+    @Override
+    public MeleeAttackAbility getPendingMeleeAbility() {
+        return pendingMeleeAbility;
+    }
+
+    @Override
+    public boolean hasPendingMeleeAbility() {
+        return pendingMeleeAbility != null;
+    }
+
+    @Override
+    public void clearPendingMeleeAbility() {
+        pendingMeleeAbility = null;
+    }
+
+    // Serialization (note: pendingMeleeAbility is transient, not saved)
     @Override
     public void writeData(ValueOutput output) {
         output.putInt("CurrentEssence", currentEssence);
@@ -253,6 +279,7 @@ public class EssenceComponentImpl implements EssenceComponent {
         output.putInt("AnchorZ", anchorZ);
         output.putInt("HasAnchor", hasAnchor ? 1 : 0);
         output.putLong("LastAbilityUseTime", lastAbilityUseTime);
+        // Note: pendingMeleeAbility not saved
     }
 
     @Override
@@ -279,6 +306,8 @@ public class EssenceComponentImpl implements EssenceComponent {
         anchorZ = input.getInt("AnchorZ").orElse(0);
         hasAnchor = input.getInt("HasAnchor").orElse(0) != 0;
         lastAbilityUseTime = input.getLong("LastAbilityUseTime").orElse(0L);
+
+        // pendingMeleeAbility is reset to null – not loaded
 
         updateSaturationModifiers();
         applyAspectToPlayer();

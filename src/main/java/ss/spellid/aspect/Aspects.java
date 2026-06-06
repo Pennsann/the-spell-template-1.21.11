@@ -11,7 +11,11 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import ss.spellid.TheSpell;
 import ss.spellid.aspect.ability.FireballAbility;
+import ss.spellid.aspect.ability.PermafrostAuraPower;
+import ss.spellid.aspect.ability.PermafrostTouchAbility;
+import ss.spellid.aspect.ability.AspectAbility;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,6 +23,16 @@ import java.util.Map;
 public class Aspects {
     private static final Map<Identifier, Aspect> REGISTRY = new HashMap<>();
 
+    // Helper to create a mutable list of 3 abilities (slot 0,1,2)
+    private static List<AspectAbility> createAbilityList(AspectAbility slot0, AspectAbility slot1, AspectAbility slot2) {
+        List<AspectAbility> list = new ArrayList<>(3);
+        list.add(slot0);
+        list.add(slot1);
+        list.add(slot2);
+        return list;
+    }
+
+    // Survivor – no abilities
     public static final Aspect SURVIVOR = register(
             new Aspect(
                     Identifier.fromNamespaceAndPath(TheSpell.MOD_ID, "survivor"),
@@ -39,10 +53,11 @@ public class Aspects {
                                     "survivor_speed"
                             )
                     ),
-                    null // No active ability for Survivor yet
+                    new ArrayList<>()
             )
     );
 
+    // Fire Aspect – ability at slot 1 (Awakened)
     public static final Aspect FIRE = register(
             new Aspect(
                     Identifier.fromNamespaceAndPath(TheSpell.MOD_ID, "fire"),
@@ -58,10 +73,11 @@ public class Aspects {
                                     "fire_attack"
                             )
                     ),
-                    new FireballAbility() // Fire Aspect gets the fireball ability
+                    createAbilityList(null, new FireballAbility(), null)
             )
     );
 
+    // Flight – no abilities
     public static final Aspect FLIGHT = register(
             new Aspect(
                     Identifier.fromNamespaceAndPath(TheSpell.MOD_ID, "flight"),
@@ -69,7 +85,19 @@ public class Aspects {
                     Component.literal("Grants creative flight (WIP)"),
                     new ItemStack(Items.FEATHER),
                     List.of(),
-                    null
+                    new ArrayList<>()
+            )
+    );
+
+    // Frost of the Lonely Peak – ability at slot 0 (Dormant)
+    public static final Aspect FROST_OF_THE_LONELY_PEAK = register(
+            new Aspect(
+                    Identifier.fromNamespaceAndPath(TheSpell.MOD_ID, "frost_of_the_lonely_peak"),
+                    Component.literal("Frost of the Lonely Peak"),
+                    Component.literal("The cold of the highest mountain, where even thoughts freeze."),
+                    new ItemStack(Items.PACKED_ICE),
+                    List.of(new PermafrostAuraPower()),
+                    createAbilityList(new PermafrostTouchAbility(), null, null)
             )
     );
 
@@ -83,11 +111,10 @@ public class Aspects {
     }
 
     public static Identifier getRandomStarterId() {
-        // For now just return SURVIVOR
         return SURVIVOR.getId();
     }
 
     public static void init() {
-        // Just to load the class
+        // loads class
     }
 }

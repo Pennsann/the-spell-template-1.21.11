@@ -3,6 +3,9 @@
   "itemGroup.the-spell": "The spell",
   "effect.the-spell.nightmare_seed": "§5Nightmare Seed",
   "item.the-spell.citadel_gateway": "Citadel Gateway",
-  "key.the-spell.ability": "Use Aspect Ability",
-  "category.the-spell.general": "The Spell"
+  "category.the-spell.general": "The Spell",
+  "key.the-spell.dormant_ability": "Dormant Ability",
+  "key.the-spell.awakened_ability": "Awakened Ability",
+  "key.the-spell.ascended_ability": "Ascended Ability",
+  "category.the-spell.aspects": "The Spell - Aspects"
 }

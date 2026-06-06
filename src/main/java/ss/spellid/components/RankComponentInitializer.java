@@ -28,6 +28,12 @@ public class RankComponentInitializer implements EntityComponentInitializer {
                     Identifier.fromNamespaceAndPath(TheSpell.MOD_ID, "nightmare_instance"),
                     NightmareInstance.class
             );
+    // Flaws
+    public static final ComponentKey<FlawComponent> FLAW =
+            ComponentRegistryV3.INSTANCE.getOrCreate(
+                    Identifier.fromNamespaceAndPath(TheSpell.MOD_ID, "flaw"),
+                    FlawComponent.class
+            );
 
     @Override
     public void registerEntityComponentFactories(EntityComponentFactoryRegistry registry) {
@@ -49,5 +55,11 @@ public class RankComponentInitializer implements EntityComponentInitializer {
                 player -> new NightmareInstanceImpl(),
                 RespawnCopyStrategy.NEVER_COPY
         );
+
+        // Register for flaws
+        registry.registerForPlayers(
+                FLAW, player -> new FlawComponentImpl(), RespawnCopyStrategy.ALWAYS_COPY
+        );
+
     }
 }

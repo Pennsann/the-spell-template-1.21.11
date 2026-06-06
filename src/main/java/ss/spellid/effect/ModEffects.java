@@ -9,14 +9,19 @@ import ss.spellid.TheSpell;
 
 public class ModEffects {
     public static final MobEffect NIGHTMARE_SEED_EFFECT = new NightmareSeedEffect();
+    public static final MobEffect CHILLED = new ChilledEffect();
+    public static final MobEffect FROZEN = new FrozenEffect();
+
     public static Holder<MobEffect> NIGHTMARE_SEED;
+    public static Holder<MobEffect> CHILLED_HOLDER;
+    public static Holder<MobEffect> FROZEN_HOLDER;
 
     public static void register() {
-        Identifier id = Identifier.fromNamespaceAndPath(TheSpell.MOD_ID, "nightmare_seed");
-        // Register the effect (so it has an ID and can be used in commands, etc.)
-        Registry.register(BuiltInRegistries.MOB_EFFECT, id, NIGHTMARE_SEED_EFFECT);
-
-        // Create a direct holder from the effect instance
-        NIGHTMARE_SEED = Holder.direct(NIGHTMARE_SEED_EFFECT);
+        NIGHTMARE_SEED = Registry.registerForHolder(BuiltInRegistries.MOB_EFFECT,
+                Identifier.fromNamespaceAndPath(TheSpell.MOD_ID, "nightmare_seed"), NIGHTMARE_SEED_EFFECT);
+        CHILLED_HOLDER = Registry.registerForHolder(BuiltInRegistries.MOB_EFFECT,
+                Identifier.fromNamespaceAndPath(TheSpell.MOD_ID, "chilled"), CHILLED);
+        FROZEN_HOLDER = Registry.registerForHolder(BuiltInRegistries.MOB_EFFECT,
+                Identifier.fromNamespaceAndPath(TheSpell.MOD_ID, "frozen"), FROZEN);
     }
 }

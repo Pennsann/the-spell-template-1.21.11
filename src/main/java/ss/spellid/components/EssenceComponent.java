@@ -6,6 +6,7 @@ import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import org.ladysnake.cca.api.v3.component.Component;
 import ss.spellid.aspect.Aspect;
+import ss.spellid.aspect.MeleeAttackAbility;
 import ss.spellid.ranks.FragmentTier;
 import ss.spellid.ranks.Ranks;
 
@@ -44,4 +45,10 @@ public interface EssenceComponent extends Component {
 
     long getLastAbilityUseTime();
     void setLastAbilityUseTime(long time);
+
+    // Melee ability pending
+    void setPendingMeleeAbility(MeleeAttackAbility ability);
+    MeleeAttackAbility getPendingMeleeAbility();
+    boolean hasPendingMeleeAbility();
+    void clearPendingMeleeAbility();
 }

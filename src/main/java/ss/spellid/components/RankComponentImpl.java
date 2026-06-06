@@ -36,7 +36,6 @@ public class RankComponentImpl implements RankComponent {
         Ranks oldRank = this.rank;
         this.rank = (newRank != null) ? newRank : Ranks.PLAYER;
         if (oldRank != this.rank) {
-            TheSpell.LOGGER.info("Rank change for {}: {} -> {}", player.getName().getString(), oldRank, this.rank);
             applyRankModifiers(oldRank, this.rank);
 
             // Update saturation modifiers because max percent may have changed
@@ -59,18 +58,8 @@ public class RankComponentImpl implements RankComponent {
         AttributeInstance attackAttr = player.getAttribute(Attributes.ATTACK_DAMAGE);
         if (healthAttr == null || speedAttr == null || attackAttr == null) return;
 
-        // Log current modifiers for debugging
-        TheSpell.LOGGER.info("Before removal - Health modifiers: {}", healthAttr.getModifiers());
-        TheSpell.LOGGER.info("Before removal - Speed modifiers: {}", speedAttr.getModifiers());
-        TheSpell.LOGGER.info("Before removal - Attack modifiers: {}", attackAttr.getModifiers());
-
         // Remove all rank-based modifiers first
         removeAllRankModifiers(healthAttr, speedAttr, attackAttr);
-
-        // Log after removal
-        TheSpell.LOGGER.info("After removal - Health modifiers: {}", healthAttr.getModifiers());
-        TheSpell.LOGGER.info("After removal - Speed modifiers: {}", speedAttr.getModifiers());
-        TheSpell.LOGGER.info("After removal - Attack modifiers: {}", attackAttr.getModifiers());
 
         // Apply new rank modifiers
         switch (newRank) {
@@ -93,8 +82,6 @@ public class RankComponentImpl implements RankComponent {
         if (player.getHealth() > player.getMaxHealth()) {
             player.setHealth(player.getMaxHealth());
         }
-
-        TheSpell.LOGGER.info("After adding - Health: {}, Speed: {}, Attack: {}", player.getMaxHealth(), speedAttr != null ? speedAttr.getValue() : 0, attackAttr != null ? attackAttr.getValue() : 0);
     }
 
     private void removeAllRankModifiers(AttributeInstance healthAttr, AttributeInstance speedAttr, AttributeInstance attackAttr) {
