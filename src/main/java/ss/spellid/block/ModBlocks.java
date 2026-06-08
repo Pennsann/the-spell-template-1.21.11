@@ -1,6 +1,7 @@
 package ss.spellid.block;
 
 import net.minecraft.core.Registry;
+import net.minecraft.world.level.block.SoundType;
 import ss.spellid.block.custom.CitadelGatewayBlock;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
@@ -11,7 +12,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import ss.spellid.TheSpell;
-
+import ss.spellid.block.custom.IceSheetBlock;
 import java.util.function.Function;
 
 public class ModBlocks {
@@ -23,6 +24,15 @@ public class ModBlocks {
                     .strength(3.0f)
                     .requiresCorrectToolForDrops()
                     .noOcclusion());
+
+    public static final Block ICE_SHEET = registerBlock("ice_sheet",
+            IceSheetBlock::new,
+            BlockBehaviour.Properties.of()
+                    .strength(0.2f)
+                    .noOcclusion()
+                    .friction(0.98f)    // slippery
+                    .sound(SoundType.GLASS)  // ice‑like break sound
+    );
 
     // Helper method to register a block and its item
     private static Block registerBlock(String name,

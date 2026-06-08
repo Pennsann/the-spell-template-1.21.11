@@ -3,7 +3,9 @@
 	"package": "ss.spellid.mixin",
 	"compatibilityLevel": "JAVA_21",
 	"mixins": [
-		"ExampleMixin"
+		"ExampleMixin",
+		"IceSheetGroundDetectionMixin",
+		"IceSheetStepSoundMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

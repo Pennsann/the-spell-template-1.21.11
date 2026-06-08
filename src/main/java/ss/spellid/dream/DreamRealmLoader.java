@@ -29,20 +29,17 @@ public class DreamRealmLoader {
 
         TheSpell.LOGGER.info("Checking Dream Realm dimension folder at: {}", targetDimFolder);
 
-        // If the folder exists and contains region files, assume it's already populated
         if (Files.exists(targetDimFolder) && hasRegionFiles(targetDimFolder)) {
             TheSpell.LOGGER.info("Dream Realm dimension folder already contains region files, skipping copy.");
             return;
         }
 
-        // If folder exists but is empty (no region files), we still copy
         if (Files.exists(targetDimFolder)) {
             TheSpell.LOGGER.info("Dream Realm dimension folder exists but is empty. Will copy pre-built files.");
         } else {
             TheSpell.LOGGER.info("Dream Realm dimension folder not found. Copying pre-built files...");
         }
 
-        // Find the source folder inside the mod JAR
         Path sourcePreset = FabricLoader.getInstance().getModContainer(TheSpell.MOD_ID)
                 .flatMap(container -> container.findPath(PRESET_PATH))
                 .orElse(null);
@@ -55,7 +52,6 @@ public class DreamRealmLoader {
 
         TheSpell.LOGGER.info("Found source preset at: {}", sourcePreset);
 
-        // List contents of source preset to verify
         try (Stream<Path> walk = Files.walk(sourcePreset)) {
             TheSpell.LOGGER.info("Contents of source preset:");
             walk.forEach(path -> {
@@ -68,23 +64,24 @@ public class DreamRealmLoader {
         }
 
         try {
-            // Create the target directory if it doesn't exist
             Files.createDirectories(targetDimFolder);
 
-            // Copy everything recursively from source to target
             Files.walkFileTree(sourcePreset, new SimpleFileVisitor<>() {
                 @Override
                 public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
-                    Path target = targetDimFolder.resolve(sourcePreset.relativize(dir));
-                    Files.createDirectories(target);
+                    // Get relative path as a string, then resolve
+                    Path relative = sourcePreset.relativize(dir);
+                    Path targetDir = targetDimFolder.resolve(relative.toString());
+                    Files.createDirectories(targetDir);
                     return FileVisitResult.CONTINUE;
                 }
 
                 @Override
                 public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                    Path target = targetDimFolder.resolve(sourcePreset.relativize(file));
-                    TheSpell.LOGGER.info("Copying file: {} -> {}", file, target);
-                    Files.copy(file, target, StandardCopyOption.REPLACE_EXISTING);
+                    Path relative = sourcePreset.relativize(file);
+                    Path targetFile = targetDimFolder.resolve(relative.toString());
+                    TheSpell.LOGGER.info("Copying file: {} -> {}", file, targetFile);
+                    Files.copy(file, targetFile, StandardCopyOption.REPLACE_EXISTING);
                     return FileVisitResult.CONTINUE;
                 }
             });
