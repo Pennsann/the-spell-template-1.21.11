@@ -51,4 +51,10 @@ public interface EssenceComponent extends Component {
     MeleeAttackAbility getPendingMeleeAbility();
     boolean hasPendingMeleeAbility();
     void clearPendingMeleeAbility();
+
+    long getCustomLong(String key, long defaultValue);
+    void setCustomLong(String key, long value);
+
+    long getLastChannelFlawTick();
+    void setLastChannelFlawTick(long tick);
 }

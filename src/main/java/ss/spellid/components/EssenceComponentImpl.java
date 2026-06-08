@@ -15,6 +15,9 @@ import ss.spellid.aspect.MeleeAttackAbility;
 import ss.spellid.ranks.FragmentTier;
 import ss.spellid.ranks.Ranks;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public class EssenceComponentImpl implements EssenceComponent {
     private static final int SATURATION_STEPS = 1000;
     private static final float TARGET_BONUS = 0.5f;
@@ -47,8 +50,28 @@ public class EssenceComponentImpl implements EssenceComponent {
 
     private final Entity entity;
 
+    private final Map<String, Long> customLongs = new HashMap<>();
+
+    private long lastChannelFlawTick = 0;
+
     public EssenceComponentImpl(Entity entity) {
         this.entity = entity;
+    }
+
+    @Override
+    public long getLastChannelFlawTick() { return lastChannelFlawTick; }
+
+    @Override
+    public void setLastChannelFlawTick(long tick) { this.lastChannelFlawTick = tick; }
+
+    @Override
+    public long getCustomLong(String key, long defaultValue) {
+        return customLongs.getOrDefault(key, defaultValue);
+    }
+
+    @Override
+    public void setCustomLong(String key, long value) {
+        customLongs.put(key, value);
     }
 
     @Override

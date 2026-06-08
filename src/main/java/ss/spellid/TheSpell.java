@@ -22,13 +22,15 @@ import org.slf4j.LoggerFactory;
 import ss.spellid.aspect.Aspect;
 import ss.spellid.aspect.Aspects;
 import ss.spellid.aspect.ability.AspectAbility;
+import ss.spellid.aspect.ability.ChanneledAbility;
 import ss.spellid.block.ModBlocks;
 import ss.spellid.components.RankComponentInitializer;
 import ss.spellid.dream.DreamRealmLoader;
 import ss.spellid.effect.ModEffects;
 import ss.spellid.event.*;
 import ss.spellid.item.ModItems;
-import ss.spellid.network.AbilityUsePayload;
+import ss.spellid.network.ChannelStartPayload;
+import ss.spellid.network.ChannelStopPayload;
 import ss.spellid.ranks.Ranks;
 
 import java.util.Set;
@@ -56,6 +58,7 @@ public class TheSpell implements ModInitializer {
 		NightmareCompletionHandler.register();
 		WinterSolsticeHandler.register();
 		AuraHandler.register();
+		ChanneledAbilityHandler.register();
 
 		ServerLifecycleEvents.SERVER_STARTING.register(server -> {
 			DreamRealmLoader.ensureDimensionFilesExist(server);
@@ -93,15 +96,19 @@ public class TheSpell implements ModInitializer {
 	}
 
 	private void registerNetworkReceivers() {
-		PayloadTypeRegistry.playC2S().register(AbilityUsePayload.TYPE, AbilityUsePayload.CODEC);
-		ServerPlayNetworking.registerGlobalReceiver(AbilityUsePayload.TYPE, (payload, context) -> {
+		// Register payloads
+		PayloadTypeRegistry.playC2S().register(ChannelStartPayload.TYPE, ChannelStartPayload.CODEC);
+		PayloadTypeRegistry.playC2S().register(ChannelStopPayload.TYPE, ChannelStopPayload.CODEC);
+
+		// Handle start payload for all slots (0,1,2)
+		ServerPlayNetworking.registerGlobalReceiver(ChannelStartPayload.TYPE, (payload, context) -> {
 			context.server().execute(() -> {
 				ServerPlayer player = context.player();
 				int slot = payload.slot();
 				var rankComp = RANK_KEY.get(player);
 				var essence = ESSENCE.get(player);
 
-				// Map slot to required rank
+				// Rank check
 				Ranks requiredRank;
 				switch (slot) {
 					case 0 -> requiredRank = Ranks.SLEEPER;
@@ -131,27 +138,43 @@ public class TheSpell implements ModInitializer {
 					return;
 				}
 
-				long currentTime = player.level().getGameTime();
-				long lastUse = essence.getLastAbilityUseTime();
-				int cooldown = ability.getCooldownTicks();
-				if (cooldown > 0 && currentTime - lastUse < cooldown) {
-					player.displayClientMessage(Component.literal("§cAbility on cooldown!"), true);
-					return;
-				}
+				// Decide based on ability type
+				if (ability instanceof ChanneledAbility channeled) {
+					// Start channel (if not already active)
+					if (!ChanneledAbilityHandler.startChannel(player, channeled)) {
+						player.displayClientMessage(Component.literal("§cCannot start channeled ability (cooldown or already active)!"), true);
+					}
+				} else {
+					// Single-use ability: execute once (with cooldown and essence checks)
+					long currentTime = player.level().getGameTime();
+					long lastUse = essence.getLastAbilityUseTime();
+					int cooldown = ability.getCooldownTicks();
+					if (cooldown > 0 && currentTime - lastUse < cooldown) {
+						player.displayClientMessage(Component.literal("§cAbility on cooldown!"), true);
+						return;
+					}
 
-				int cost = ability.getEssenceCost();
-				if (essence.getCurrentEssence() < cost) {
-					player.displayClientMessage(Component.literal("§cNot enough essence!"), true);
-					return;
-				}
+					int cost = ability.getEssenceCost();
+					if (essence.getCurrentEssence() < cost) {
+						player.displayClientMessage(Component.literal("§cNot enough essence!"), true);
+						return;
+					}
 
-				if (ability.canUse(player)) {
-					ability.use(player);
-					essence.addCurrentEssence(-cost);
-					essence.setLastAbilityUseTime(currentTime);
-					// Optional: send a success message
-					player.displayClientMessage(Component.literal("§aUsed " + ability.getId().getPath()), true);
+					if (ability.canUse(player)) {
+						ability.use(player);
+						essence.addCurrentEssence(-cost);
+						essence.setLastAbilityUseTime(currentTime);
+						player.displayClientMessage(Component.literal("§aUsed " + ability.getId().getPath()), true);
+					}
 				}
+			});
+		});
+
+		// Handle stop payload – stops any active channel
+		ServerPlayNetworking.registerGlobalReceiver(ChannelStopPayload.TYPE, (payload, context) -> {
+			context.server().execute(() -> {
+				ServerPlayer player = context.player();
+				ChanneledAbilityHandler.stopChannel(player);
 			});
 		});
 	}
@@ -256,7 +279,7 @@ public class TheSpell implements ModInitializer {
 											return 1;
 										})))));
 
-		// Debug commands: stats, regen, setrank, test solstice
+		// Debug commands: stats, regen, setrank, fillessence, test solstice
 		dispatcher.register(Commands.literal("spell")
 				.then(Commands.literal("debug")
 						.then(Commands.literal("stats")
@@ -295,7 +318,17 @@ public class TheSpell implements ModInitializer {
 												player.displayClientMessage(Component.literal("§cInvalid rank. Use: PLAYER, SLEEPER, AWAKENED, ASCENDED, TRANSCENDENT, SUPREME, SACRED, DIVINE"), false);
 											}
 											return 1;
-										})))));
+										})))
+						.then(Commands.literal("fillessence")
+								.executes(context -> {
+									ServerPlayer player = context.getSource().getPlayerOrException();
+									var essence = ESSENCE.get(player);
+									int max = essence.getMaxEssence();
+									essence.setCurrentEssence(max);
+									player.displayClientMessage(Component.literal("§aEssence filled to " + max + " / " + max), false);
+									return 1;
+								}))
+				));
 
 		// Test solstice command
 		dispatcher.register(Commands.literal("spell")

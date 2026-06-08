@@ -8,7 +8,8 @@ import net.minecraft.client.KeyMapping;
 import net.minecraft.resources.Identifier;
 import com.mojang.blaze3d.platform.InputConstants;
 import org.lwjgl.glfw.GLFW;
-import ss.spellid.network.AbilityUsePayload;
+import ss.spellid.network.ChannelStartPayload;
+import ss.spellid.network.ChannelStopPayload;
 
 public class TheSpellClient implements ClientModInitializer {
 	private static KeyMapping dormantKey;
@@ -16,6 +17,10 @@ public class TheSpellClient implements ClientModInitializer {
 	private static KeyMapping ascendedKey;
 	private static final KeyMapping.Category ABILITY_CATEGORY =
 			new KeyMapping.Category(Identifier.fromNamespaceAndPath(TheSpell.MOD_ID, "aspects"));
+
+	private static boolean lastDormantPressed = false;
+	private static boolean lastAwakenedPressed = false;
+	private static boolean lastAscendedPressed = false;
 
 	@Override
 	public void onInitializeClient() {
@@ -39,21 +44,34 @@ public class TheSpellClient implements ClientModInitializer {
 		));
 
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {
-			while (dormantKey.consumeClick()) {
-				if (client.player != null) {
-					ClientPlayNetworking.send(new AbilityUsePayload(0));
-				}
+			if (client.player == null) return;
+
+			// Dormant (slot 0)
+			boolean dormantPressed = dormantKey.isDown();
+			if (dormantPressed && !lastDormantPressed) {
+				ClientPlayNetworking.send(new ChannelStartPayload(0));
+			} else if (!dormantPressed && lastDormantPressed) {
+				ClientPlayNetworking.send(new ChannelStopPayload());
 			}
-			while (awakenedKey.consumeClick()) {
-				if (client.player != null) {
-					ClientPlayNetworking.send(new AbilityUsePayload(1));
-				}
+			lastDormantPressed = dormantPressed;
+
+			// Awakened (slot 1)
+			boolean awakenedPressed = awakenedKey.isDown();
+			if (awakenedPressed && !lastAwakenedPressed) {
+				ClientPlayNetworking.send(new ChannelStartPayload(1));
+			} else if (!awakenedPressed && lastAwakenedPressed) {
+				ClientPlayNetworking.send(new ChannelStopPayload());
 			}
-			while (ascendedKey.consumeClick()) {
-				if (client.player != null) {
-					ClientPlayNetworking.send(new AbilityUsePayload(2));
-				}
+			lastAwakenedPressed = awakenedPressed;
+
+			// Ascended (slot 2)
+			boolean ascendedPressed = ascendedKey.isDown();
+			if (ascendedPressed && !lastAscendedPressed) {
+				ClientPlayNetworking.send(new ChannelStartPayload(2));
+			} else if (!ascendedPressed && lastAscendedPressed) {
+				ClientPlayNetworking.send(new ChannelStopPayload());
 			}
+			lastAscendedPressed = ascendedPressed;
 		});
 	}
 }

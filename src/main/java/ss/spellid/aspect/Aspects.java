@@ -10,10 +10,7 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import ss.spellid.TheSpell;
-import ss.spellid.aspect.ability.FireballAbility;
-import ss.spellid.aspect.ability.PermafrostAuraPower;
-import ss.spellid.aspect.ability.PermafrostTouchAbility;
-import ss.spellid.aspect.ability.AspectAbility;
+import ss.spellid.aspect.ability.*;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -97,7 +94,7 @@ public class Aspects {
                     Component.literal("The cold of the highest mountain, where even thoughts freeze."),
                     new ItemStack(Items.PACKED_ICE),
                     List.of(new PermafrostAuraPower()),
-                    createAbilityList(new PermafrostTouchAbility(), null, null)
+                    createAbilityList(new PermafrostTouchAbility(), new FrigidTorrentAbility(), null)
             )
     );
 
