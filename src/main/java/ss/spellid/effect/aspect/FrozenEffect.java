@@ -1,4 +1,4 @@
-package ss.spellid.effect;
+package ss.spellid.effect.aspect;
 
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.effect.MobEffect;

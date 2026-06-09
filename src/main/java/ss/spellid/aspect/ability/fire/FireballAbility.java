@@ -1,10 +1,11 @@
-package ss.spellid.aspect.ability;
+package ss.spellid.aspect.ability.fire;
 
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.projectile.hurtingprojectile.SmallFireball;
 import net.minecraft.world.phys.Vec3;
 import ss.spellid.TheSpell;
+import ss.spellid.aspect.ability.AspectAbility;
 
 public class FireballAbility implements AspectAbility {
     private static final Identifier ID = Identifier.fromNamespaceAndPath(TheSpell.MOD_ID, "fireball");

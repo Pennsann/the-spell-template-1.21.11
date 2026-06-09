@@ -6,6 +6,8 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.effect.MobEffect;
 import ss.spellid.TheSpell;
+import ss.spellid.effect.aspect.ChilledEffect;
+import ss.spellid.effect.aspect.FrozenEffect;
 
 public class ModEffects {
     public static final MobEffect NIGHTMARE_SEED_EFFECT = new NightmareSeedEffect();

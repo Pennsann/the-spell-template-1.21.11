@@ -1,4 +1,4 @@
-package ss.spellid.aspect.ability;
+package ss.spellid.aspect.ability.frost;
 
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -7,6 +7,9 @@ import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.LivingEntity;
 import ss.spellid.TheSpell;
+import ss.spellid.aspect.ability.AspectAbility;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
 import ss.spellid.util.FrostFlawHelper;
 import ss.spellid.aspect.MeleeAttackAbility;
 import ss.spellid.components.EssenceComponent;
@@ -64,8 +67,42 @@ public class PermafrostTouchAbility implements AspectAbility, MeleeAttackAbility
         var frozenHolder = net.minecraft.core.registries.BuiltInRegistries.MOB_EFFECT.wrapAsHolder(ModEffects.FROZEN);
         if (target.hasEffect(chilledHolder)) {
             target.addEffect(new MobEffectInstance(frozenHolder, 20, 0));
+            // Freeze sound — louder crack when upgrading to frozen
+            player.level().playSound(
+                    null,
+                    target.getX(), target.getY(), target.getZ(),
+                    net.minecraft.sounds.SoundEvents.PLAYER_HURT_FREEZE,
+                    net.minecraft.sounds.SoundSource.PLAYERS,
+                    1.0f,
+                    0.8f  // lower pitch = deeper freeze crack
+            );
+            player.level().playSound(
+                    null,
+                    target.getX(), target.getY(), target.getZ(),
+                    net.minecraft.sounds.SoundEvents.GLASS_BREAK,
+                    net.minecraft.sounds.SoundSource.BLOCKS,
+                    0.6f,
+                    1.6f  // high pitch = icy shatter
+            );
         } else {
             target.addEffect(new MobEffectInstance(chilledHolder, 100, 0));
+            // Chill sound — softer initial frost
+            player.level().playSound(
+                    null,
+                    target.getX(), target.getY(), target.getZ(),
+                    net.minecraft.sounds.SoundEvents.POWDER_SNOW_STEP,
+                    net.minecraft.sounds.SoundSource.BLOCKS,
+                    0.8f,
+                    1.4f
+            );
+            player.level().playSound(
+                    null,
+                    target.getX(), target.getY(), target.getZ(),
+                    net.minecraft.sounds.SoundEvents.PLAYER_HURT_FREEZE,
+                    net.minecraft.sounds.SoundSource.PLAYERS,
+                    0.5f,
+                    1.2f
+            );
         }
     }
 }

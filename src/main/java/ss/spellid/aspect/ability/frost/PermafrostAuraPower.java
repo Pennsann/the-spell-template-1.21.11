@@ -1,4 +1,4 @@
-package ss.spellid.aspect.ability;
+package ss.spellid.aspect.ability.frost;
 
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffectInstance;

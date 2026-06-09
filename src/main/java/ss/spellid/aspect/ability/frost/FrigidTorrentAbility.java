@@ -1,11 +1,13 @@
-package ss.spellid.aspect.ability;
+package ss.spellid.aspect.ability.frost;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.resources.Identifier;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.effect.MobEffectInstance;
-import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
@@ -13,6 +15,7 @@ import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import ss.spellid.TheSpell;
+import ss.spellid.aspect.ability.ChanneledAbility;
 import ss.spellid.util.FrostFlawHelper;
 import ss.spellid.block.ModBlocks;
 import ss.spellid.block.custom.IceSheetBlock;
@@ -56,9 +59,19 @@ public class FrigidTorrentAbility implements ChanneledAbility {
     @Override
     public void onStart(ServerPlayer player) {
         TheSpell.LOGGER.info("Frigid Torrent started by {}", player.getName().getString());
-        FrostFlawHelper.applyFrostFlaw(player, 2); // Awakened flaw
+        FrostFlawHelper.applyFrostFlaw(player, 2);
         EssenceComponent essence = RankComponentInitializer.ESSENCE.get(player);
         essence.setLastChannelFlawTick(player.level().getGameTime());
+
+        // Initial blast sound on activation
+        player.level().playSound(
+                null,
+                player.getX(), player.getY(), player.getZ(),
+                SoundEvents.TRIDENT_RIPTIDE_1,
+                SoundSource.PLAYERS,
+                0.8f,
+                1.2f
+        );
     }
 
     @Override
@@ -66,12 +79,33 @@ public class FrigidTorrentAbility implements ChanneledAbility {
         applyConeEffects(player);
         spawnConeParticles(player);
         freezeGroundInCone(player);
+
         EssenceComponent essence = RankComponentInitializer.ESSENCE.get(player);
         long now = player.level().getGameTime();
         long lastFlaw = essence.getLastChannelFlawTick();
         if (now - lastFlaw >= FLAW_REAPPLY_INTERVAL) {
             FrostFlawHelper.applyFrostFlaw(player, 2);
             essence.setLastChannelFlawTick(now);
+        }
+
+        // Continuous wind sound every 8 ticks
+        if (now % 8 == 0) {
+            player.level().playSound(
+                    null,
+                    player.getX(), player.getY(), player.getZ(),
+                    SoundEvents.WEATHER_RAIN_ABOVE,
+                    SoundSource.PLAYERS,
+                    0.6f,
+                    1.4f
+            );
+            player.level().playSound(
+                    null,
+                    player.getX(), player.getY(), player.getZ(),
+                    SoundEvents.POWDER_SNOW_PLACE,
+                    SoundSource.PLAYERS,
+                    0.4f,
+                    1.8f
+            );
         }
     }
 
@@ -88,6 +122,7 @@ public class FrigidTorrentAbility implements ChanneledAbility {
         AABB searchBox = AABB.ofSize(origin, RANGE * 2, RANGE * 2, RANGE * 2);
         List<LivingEntity> targets = player.level().getEntitiesOfClass(LivingEntity.class, searchBox,
                 e -> e != player && e.isAlive());
+
         for (LivingEntity target : targets) {
             Vec3 toTarget = target.getBoundingBox().getCenter().subtract(origin);
             double dist = toTarget.length();
@@ -113,23 +148,47 @@ public class FrigidTorrentAbility implements ChanneledAbility {
         Vec3 origin = player.getEyePosition();
         Vec3 look = player.getLookAngle();
         double cosThreshold = Math.cos(ANGLE_RADIANS);
-        int particleCount = 80;
+        ServerLevel serverLevel = (ServerLevel) player.level();
 
-        for (int i = 0; i < particleCount; i++) {
+        for (int i = 0; i < 80; i++) {
             Vec3 randomDir = new Vec3(
                     look.x + (player.getRandom().nextDouble() - 0.5) * 1.8,
                     look.y + (player.getRandom().nextDouble() - 0.5) * 1.8,
                     look.z + (player.getRandom().nextDouble() - 0.5) * 1.8
             ).normalize();
+
             if (look.dot(randomDir) < cosThreshold) continue;
+
             double dist = player.getRandom().nextDouble() * RANGE;
             Vec3 pos = origin.add(randomDir.scale(dist));
-            player.level().addParticle(ParticleTypes.END_ROD, pos.x, pos.y, pos.z, 0, 0, 0);
+
+            if (player.getRandom().nextBoolean()) {
+                serverLevel.sendParticles(
+                        ParticleTypes.SNOWFLAKE,
+                        pos.x, pos.y, pos.z,
+                        1,
+                        0.05, 0.05, 0.05,
+                        0.02
+                );
+            } else {
+                serverLevel.sendParticles(
+                        ParticleTypes.ITEM_SNOWBALL,
+                        pos.x, pos.y, pos.z,
+                        1,
+                        0, 0, 0,
+                        0
+                );
+            }
         }
 
-        if (player.getRandom().nextInt(10) == 0) {
-            player.level().addParticle(ParticleTypes.SNOWFLAKE, player.getX(), player.getY() + 0.5, player.getZ(), 0, 0, 0);
-        }
+        // Burst at origin every tick
+        serverLevel.sendParticles(
+                ParticleTypes.SNOWFLAKE,
+                player.getX(), player.getEyeY(), player.getZ(),
+                5,
+                0.1, 0.1, 0.1,
+                0.05
+        );
     }
 
     private void freezeGroundInCone(ServerPlayer player) {
@@ -141,7 +200,7 @@ public class FrigidTorrentAbility implements ChanneledAbility {
         int blocksChanged = 0;
         for (int dx = -radius; dx <= radius && blocksChanged < 30; dx++) {
             for (int dz = -radius; dz <= radius && blocksChanged < 30; dz++) {
-                double dist2D = Math.sqrt(dx*dx + dz*dz);
+                double dist2D = Math.sqrt(dx * dx + dz * dz);
                 if (dist2D > radius) continue;
                 Vec3 direction = new Vec3(dx, 0, dz).normalize();
                 Vec3 horizontalLook = new Vec3(look.x, 0, look.z).normalize();

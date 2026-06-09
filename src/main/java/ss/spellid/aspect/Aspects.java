@@ -11,6 +11,10 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import ss.spellid.TheSpell;
 import ss.spellid.aspect.ability.*;
+import ss.spellid.aspect.ability.fire.FireballAbility;
+import ss.spellid.aspect.ability.frost.FrigidTorrentAbility;
+import ss.spellid.aspect.ability.frost.PermafrostAuraPower;
+import ss.spellid.aspect.ability.frost.PermafrostTouchAbility;
 
 import java.util.ArrayList;
 import java.util.HashMap;
