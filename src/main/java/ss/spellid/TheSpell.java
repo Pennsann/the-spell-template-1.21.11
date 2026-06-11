@@ -31,9 +31,12 @@ import ss.spellid.event.*;
 import ss.spellid.item.ModItems;
 import ss.spellid.network.ChannelStartPayload;
 import ss.spellid.network.ChannelStopPayload;
+import ss.spellid.party.Party;
+import ss.spellid.party.PartyManager;
 import ss.spellid.ranks.Ranks;
 
 import java.util.Set;
+import java.util.UUID;
 
 import static ss.spellid.components.RankComponentInitializer.RANK_KEY;
 import static ss.spellid.components.RankComponentInitializer.ESSENCE;
@@ -106,13 +109,11 @@ public class TheSpell implements ModInitializer {
 				var rankComp = RANK_KEY.get(player);
 				var essence = ESSENCE.get(player);
 
-				// Validate slot
 				if (slot < 0 || slot > 2) {
 					player.displayClientMessage(Component.literal("§cInvalid ability slot!"), true);
 					return;
 				}
 
-				// Get aspect
 				String aspectId = essence.getAspectId();
 				if (aspectId == null) {
 					player.displayClientMessage(Component.literal("§cYou have no aspect!"), true);
@@ -120,43 +121,35 @@ public class TheSpell implements ModInitializer {
 				}
 				Aspect aspect = Aspects.get(Identifier.parse(aspectId));
 				if (aspect == null) return;
-
-				// Get ability for slot
 				AspectAbility ability = aspect.getAbilityForSlot(slot);
 				if (ability == null) {
 					player.displayClientMessage(Component.literal("§cYour aspect has no ability for this slot!"), true);
 					return;
 				}
 
-				// Rank check from the ability itself
 				if (rankComp.getRank().ordinal() < ability.getRequiredRank().ordinal()) {
 					player.displayClientMessage(Component.literal("§cYou need to be " + ability.getRequiredRank().getDisplayName() + " to use this ability!"), true);
 					return;
 				}
 
-				// Decide based on ability type
 				if (ability instanceof ChanneledAbility channeled) {
 					if (!ChanneledAbilityHandler.startChannel(player, channeled)) {
 						player.displayClientMessage(Component.literal("§cCannot start channeled ability (cooldown or already active)!"), true);
 					}
 				} else {
-					// Per-ability cooldown check
 					long currentTime = player.level().getGameTime();
 					String cooldownKey = "cooldown_" + ability.getId().toString();
 					long cooldownEnd = essence.getCustomLong(cooldownKey, 0L);
-
 					if (currentTime < cooldownEnd) {
 						long ticksLeft = cooldownEnd - currentTime;
 						player.displayClientMessage(Component.literal("§cAbility on cooldown! (" + (ticksLeft / 20) + "s)"), true);
 						return;
 					}
-
 					int cost = ability.getEssenceCost();
 					if (essence.getCurrentEssence() < cost) {
 						player.displayClientMessage(Component.literal("§cNot enough essence!"), true);
 						return;
 					}
-
 					if (ability.canUse(player)) {
 						ability.use(player);
 						essence.addCurrentEssence(-cost);
@@ -176,7 +169,7 @@ public class TheSpell implements ModInitializer {
 	}
 
 	private void registerCommands(com.mojang.brigadier.CommandDispatcher<net.minecraft.commands.CommandSourceStack> dispatcher) {
-		// Soul debug
+		// Soul debug command
 		dispatcher.register(Commands.literal("soul_debug")
 				.executes(context -> {
 					Player player = context.getSource().getPlayerOrException();
@@ -191,7 +184,7 @@ public class TheSpell implements ModInitializer {
 					return 1;
 				}));
 
-		// Nightmare exit
+		// Nightmare exit command
 		dispatcher.register(Commands.literal("nightmare_exit")
 				.executes(context -> {
 					Player player = context.getSource().getPlayerOrException();
@@ -275,7 +268,7 @@ public class TheSpell implements ModInitializer {
 											return 1;
 										})))));
 
-		// Debug commands
+		// Debug commands: stats, regen, setrank, fillessence, test solstice
 		dispatcher.register(Commands.literal("spell")
 				.then(Commands.literal("debug")
 						.then(Commands.literal("stats")
@@ -323,9 +316,10 @@ public class TheSpell implements ModInitializer {
 									essence.setCurrentEssence(max);
 									player.displayClientMessage(Component.literal("§aEssence filled to " + max + " / " + max), false);
 									return 1;
-								}))));
+								}))
+				));
 
-		// Test solstice
+		// Test solstice command
 		dispatcher.register(Commands.literal("spell")
 				.then(Commands.literal("test")
 						.then(Commands.literal("solstice")
@@ -337,5 +331,134 @@ public class TheSpell implements ModInitializer {
 									WinterSolsticeHandler.forceTeleport(player);
 									return 1;
 								}))));
+
+		// ---------- PARTY COMMANDS ----------
+		dispatcher.register(Commands.literal("party")
+				.then(Commands.literal("create")
+						.executes(context -> {
+							ServerPlayer player = context.getSource().getPlayerOrException();
+							Party party = PartyManager.createParty(player, 4);
+							if (party == null) {
+								player.displayClientMessage(Component.literal("§cYou are already in a party or could not create one."), false);
+							} else {
+								player.displayClientMessage(Component.literal("§aYou created a new party."), false);
+							}
+							return 1;
+						}))
+				.then(Commands.literal("invite")
+						.then(Commands.argument("player", StringArgumentType.string())
+								.executes(context -> {
+									ServerPlayer sender = context.getSource().getPlayerOrException();
+									String targetName = context.getArgument("player", String.class);
+									ServerPlayer target = sender.level().getServer().getPlayerList().getPlayerByName(targetName);
+									if (target == null) {
+										sender.displayClientMessage(Component.literal("§cPlayer not found."), false);
+										return 0;
+									}
+									if (PartyManager.invitePlayer(sender, target)) {
+										sender.displayClientMessage(Component.literal("§aInvited " + targetName + " to your party."), false);
+										target.displayClientMessage(Component.literal("§6You have been invited to " + sender.getName().getString() + "'s party. Use §e/party join " + sender.getName().getString() + " §6to accept."), false);
+									} else {
+										sender.displayClientMessage(Component.literal("§cCould not invite player (maybe not leader or already in party)."), false);
+									}
+									return 1;
+								})))
+				.then(Commands.literal("join")
+						.then(Commands.argument("leader", StringArgumentType.string())
+								.executes(context -> {
+									ServerPlayer joiner = context.getSource().getPlayerOrException();
+									String leaderName = context.getArgument("leader", String.class);
+									ServerPlayer leader = joiner.level().getServer().getPlayerList().getPlayerByName(leaderName);
+									if (leader == null) {
+										joiner.displayClientMessage(Component.literal("§cLeader not found."), false);
+										return 0;
+									}
+									Party party = PartyManager.getParty(leader);
+									if (party == null) {
+										joiner.displayClientMessage(Component.literal("§cThat player is not in a party."), false);
+										return 0;
+									}
+									if (!party.hasInvite(joiner.getUUID())) {
+										joiner.displayClientMessage(Component.literal("§cYou have not been invited to that party."), false);
+										return 0;
+									}
+									if (PartyManager.joinParty(joiner, party)) {
+										joiner.displayClientMessage(Component.literal("§aYou joined the party."), false);
+										for (UUID memberId : party.getMembers()) {
+											ServerPlayer member = joiner.level().getServer().getPlayerList().getPlayer(memberId);
+											if (member != null && !member.getUUID().equals(joiner.getUUID())) {
+												member.displayClientMessage(Component.literal("§e" + joiner.getName().getString() + " joined the party."), false);
+											}
+										}
+									} else {
+										joiner.displayClientMessage(Component.literal("§cCould not join party."), false);
+									}
+									return 1;
+								})))
+				.then(Commands.literal("leave")
+						.executes(context -> {
+							ServerPlayer player = context.getSource().getPlayerOrException();
+							if (PartyManager.leaveParty(player)) {
+								player.displayClientMessage(Component.literal("§aYou left your party."), false);
+							} else {
+								player.displayClientMessage(Component.literal("§cYou are not in a party."), false);
+							}
+							return 1;
+						}))
+				.then(Commands.literal("kick")
+						.then(Commands.argument("player", StringArgumentType.string())
+								.executes(context -> {
+									ServerPlayer kicker = context.getSource().getPlayerOrException();
+									String targetName = context.getArgument("player", String.class);
+									ServerPlayer target = kicker.level().getServer().getPlayerList().getPlayerByName(targetName);
+									if (target == null) {
+										kicker.displayClientMessage(Component.literal("§cPlayer not found."), false);
+										return 0;
+									}
+									if (PartyManager.kickPlayer(kicker, target)) {
+										kicker.displayClientMessage(Component.literal("§aKicked " + targetName + " from the party."), false);
+										target.displayClientMessage(Component.literal("§cYou were kicked from your party."), false);
+									} else {
+										kicker.displayClientMessage(Component.literal("§cCould not kick player (maybe not leader or not in party)."), false);
+									}
+									return 1;
+								})))
+				.then(Commands.literal("disband")
+						.executes(context -> {
+							ServerPlayer player = context.getSource().getPlayerOrException();
+							Party party = PartyManager.getParty(player);
+							if (party != null && party.isLeader(player.getUUID())) {
+								PartyManager.disbandParty(party, player.level().getServer());
+								player.displayClientMessage(Component.literal("§aParty disbanded."), false);
+							} else {
+								player.displayClientMessage(Component.literal("§cYou are not the party leader."), false);
+							}
+							return 1;
+						}))
+				.then(Commands.literal("list")
+						.executes(context -> {
+							ServerPlayer player = context.getSource().getPlayerOrException();
+							Party party = PartyManager.getParty(player);
+							if (party == null) {
+								player.displayClientMessage(Component.literal("§cYou are not in a party."), false);
+								return 0;
+							}
+							StringBuilder sb = new StringBuilder("§6Party Members: ");
+							for (UUID memberId : party.getMembers()) {
+								ServerPlayer member = player.level().getServer().getPlayerList().getPlayer(memberId);
+								if (member != null) {
+									if (member.getUUID().equals(party.getLeader())) {
+										sb.append("§e* ").append(member.getName().getString()).append(" §f(Leader)§r, ");
+									} else {
+										sb.append("§f- ").append(member.getName().getString()).append("§r, ");
+									}
+								}
+							}
+							String msg = sb.toString();
+							if (msg.endsWith(", ")) msg = msg.substring(0, msg.length() - 2);
+							player.displayClientMessage(Component.literal(msg), false);
+							return 1;
+						}))
+		);
 	}
 }

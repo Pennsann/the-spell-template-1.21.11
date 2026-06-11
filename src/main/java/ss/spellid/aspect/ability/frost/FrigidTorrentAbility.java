@@ -16,6 +16,7 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import ss.spellid.TheSpell;
 import ss.spellid.aspect.ability.ChanneledAbility;
+import ss.spellid.party.PartyManager;
 import ss.spellid.ranks.Ranks;
 import ss.spellid.util.FrostFlawHelper;
 import ss.spellid.block.ModBlocks;
@@ -122,22 +123,20 @@ public class FrigidTorrentAbility implements ChanneledAbility {
         Vec3 origin = player.getEyePosition();
         Vec3 look = player.getLookAngle();
         double cosThreshold = Math.cos(ANGLE_RADIANS);
-
         AABB searchBox = AABB.ofSize(origin, RANGE * 2, RANGE * 2, RANGE * 2);
         List<LivingEntity> targets = player.level().getEntitiesOfClass(LivingEntity.class, searchBox,
                 e -> e != player && e.isAlive());
-
         for (LivingEntity target : targets) {
+            // Skip party members
+            if (PartyManager.isPartyMember(player, target)) continue;
             Vec3 toTarget = target.getBoundingBox().getCenter().subtract(origin);
             double dist = toTarget.length();
             if (dist > RANGE) continue;
             Vec3 dir = toTarget.normalize();
             if (look.dot(dir) < cosThreshold) continue;
-
             target.hurt(player.damageSources().indirectMagic(player, player), DAMAGE);
             Vec3 knockback = dir.scale(0.2);
             target.setDeltaMovement(target.getDeltaMovement().add(knockback.x, 0.1, knockback.z));
-
             var chilledHolder = net.minecraft.core.registries.BuiltInRegistries.MOB_EFFECT.wrapAsHolder(ModEffects.CHILLED);
             var frozenHolder = net.minecraft.core.registries.BuiltInRegistries.MOB_EFFECT.wrapAsHolder(ModEffects.FROZEN);
             if (target.hasEffect(chilledHolder)) {

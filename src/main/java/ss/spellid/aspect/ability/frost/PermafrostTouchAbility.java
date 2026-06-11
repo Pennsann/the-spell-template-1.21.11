@@ -17,6 +17,7 @@ import ss.spellid.components.RankComponentInitializer;
 import ss.spellid.effect.ModEffects;
 import ss.spellid.ranks.Ranks;
 import ss.spellid.util.ScalingHelper;
+import ss.spellid.party.PartyManager;
 
 import java.util.Map;
 
@@ -50,7 +51,7 @@ public class PermafrostTouchAbility implements AspectAbility, MeleeAttackAbility
 
     @Override
     public void use(ServerPlayer player) {
-        FrostFlawHelper.applyFrostFlaw(player, 1); // Dormant flaw
+        FrostFlawHelper.applyFrostFlaw(player, 1);
         EssenceComponent essence = RankComponentInitializer.ESSENCE.get(player);
         essence.setPendingMeleeAbility(this);
         player.displayClientMessage(Component.literal("§bYour touch turns to frost."), true);
@@ -61,6 +62,9 @@ public class PermafrostTouchAbility implements AspectAbility, MeleeAttackAbility
 
     @Override
     public void onMeleeHit(ServerPlayer player, LivingEntity target) {
+        // Don't affect party members
+        if (PartyManager.isPartyMember(player, target)) return;
+
         int bonusDamage = ScalingHelper.getScaledInt(player, DAMAGE_BY_RANK, 4);
         int slowDuration = ScalingHelper.getScaledInt(player, SLOW_DURATION_BY_RANK, 40);
         target.hurt(player.damageSources().playerAttack(player), bonusDamage);
@@ -70,42 +74,16 @@ public class PermafrostTouchAbility implements AspectAbility, MeleeAttackAbility
         var frozenHolder = net.minecraft.core.registries.BuiltInRegistries.MOB_EFFECT.wrapAsHolder(ModEffects.FROZEN);
         if (target.hasEffect(chilledHolder)) {
             target.addEffect(new MobEffectInstance(frozenHolder, 20, 0));
-            // Freeze sound — louder crack when upgrading to frozen
-            player.level().playSound(
-                    null,
-                    target.getX(), target.getY(), target.getZ(),
-                    net.minecraft.sounds.SoundEvents.PLAYER_HURT_FREEZE,
-                    net.minecraft.sounds.SoundSource.PLAYERS,
-                    1.0f,
-                    0.8f  // lower pitch = deeper freeze crack
-            );
-            player.level().playSound(
-                    null,
-                    target.getX(), target.getY(), target.getZ(),
-                    net.minecraft.sounds.SoundEvents.GLASS_BREAK,
-                    net.minecraft.sounds.SoundSource.BLOCKS,
-                    0.6f,
-                    1.6f  // high pitch = icy shatter
-            );
+            player.level().playSound(null, target.getX(), target.getY(), target.getZ(),
+                    SoundEvents.PLAYER_HURT_FREEZE, SoundSource.PLAYERS, 1.0f, 0.8f);
+            player.level().playSound(null, target.getX(), target.getY(), target.getZ(),
+                    SoundEvents.GLASS_BREAK, SoundSource.BLOCKS, 0.6f, 1.6f);
         } else {
             target.addEffect(new MobEffectInstance(chilledHolder, 100, 0));
-            // Chill sound — softer initial frost
-            player.level().playSound(
-                    null,
-                    target.getX(), target.getY(), target.getZ(),
-                    net.minecraft.sounds.SoundEvents.POWDER_SNOW_STEP,
-                    net.minecraft.sounds.SoundSource.BLOCKS,
-                    0.8f,
-                    1.4f
-            );
-            player.level().playSound(
-                    null,
-                    target.getX(), target.getY(), target.getZ(),
-                    net.minecraft.sounds.SoundEvents.PLAYER_HURT_FREEZE,
-                    net.minecraft.sounds.SoundSource.PLAYERS,
-                    0.5f,
-                    1.2f
-            );
+            player.level().playSound(null, target.getX(), target.getY(), target.getZ(),
+                    SoundEvents.POWDER_SNOW_STEP, SoundSource.BLOCKS, 0.8f, 1.4f);
+            player.level().playSound(null, target.getX(), target.getY(), target.getZ(),
+                    SoundEvents.PLAYER_HURT_FREEZE, SoundSource.PLAYERS, 0.5f, 1.2f);
         }
     }
 }

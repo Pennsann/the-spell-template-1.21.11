@@ -18,7 +18,6 @@ public class Aspect {
     private final List<AspectPower> powers;
     private final List<AspectAbility> abilitiesBySlot; // index 0,1,2
 
-    // New constructor: list of 3 abilities (can be null for missing slots)
     public Aspect(Identifier id, Component displayName, Component description, ItemStack icon,
                   List<AspectPower> powers, List<AspectAbility> abilitiesBySlot) {
         this.id = id;
@@ -26,9 +25,12 @@ public class Aspect {
         this.description = description;
         this.icon = icon;
         this.powers = powers;
-        this.abilitiesBySlot = abilitiesBySlot != null ? abilitiesBySlot : new ArrayList<>();
+        // Copy the list to ensure it's mutable
+        this.abilitiesBySlot = abilitiesBySlot != null ? new ArrayList<>(abilitiesBySlot) : new ArrayList<>();
         // Ensure size at least 3 by padding with nulls
-        while (this.abilitiesBySlot.size() < 3) this.abilitiesBySlot.add(null);
+        while (this.abilitiesBySlot.size() < 3) {
+            this.abilitiesBySlot.add(null);
+        }
     }
 
     // Convenience for aspects with no abilities
@@ -42,17 +44,11 @@ public class Aspect {
     public ItemStack getIcon() { return icon; }
     public List<AspectPower> getPowers() { return powers; }
 
-    /**
-     * Returns the ability for the given slot (0 = Dormant, 1 = Awakened, 2 = Ascended), or null if none.
-     */
     public AspectAbility getAbilityForSlot(int slot) {
         if (slot < 0 || slot >= abilitiesBySlot.size()) return null;
         return abilitiesBySlot.get(slot);
     }
 
-    /**
-     * Legacy method for single‑ability aspects (returns the first non‑null ability).
-     */
     public AspectAbility getAbility() {
         return abilitiesBySlot.stream().filter(a -> a != null).findFirst().orElse(null);
     }

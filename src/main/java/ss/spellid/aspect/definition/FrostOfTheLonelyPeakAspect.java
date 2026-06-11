@@ -6,9 +6,12 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import ss.spellid.TheSpell;
 import ss.spellid.aspect.Aspect;
+import ss.spellid.aspect.ability.AspectAbility;
 import ss.spellid.aspect.ability.frost.FrigidTorrentAbility;
 import ss.spellid.aspect.ability.frost.PermafrostAuraPower;
 import ss.spellid.aspect.ability.frost.PermafrostTouchAbility;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class FrostOfTheLonelyPeakAspect {
@@ -18,10 +21,10 @@ public class FrostOfTheLonelyPeakAspect {
             Component.literal("The cold of the highest mountain, where even thoughts freeze."),
             new ItemStack(Items.PACKED_ICE),
             List.of(new PermafrostAuraPower()),
-            List.of(
-                    new PermafrostTouchAbility(),   // slot 0 - Sleeper
-                    new FrigidTorrentAbility(),      // slot 1 - Awakened
-                    null                             // slot 2 - Ascended (not yet implemented)
-            )
+            new ArrayList<>(Arrays.asList(
+                    new PermafrostTouchAbility(),
+                    new FrigidTorrentAbility(),
+                    null
+            ))
     );
 }

@@ -13,8 +13,11 @@ import ss.spellid.TheSpell;
 import ss.spellid.aspect.Aspect;
 import ss.spellid.aspect.AttributeModifierPower;
 import ss.spellid.aspect.PotionEffectPower;
+import ss.spellid.aspect.ability.AspectAbility;
 import ss.spellid.aspect.ability.fire.FireballAbility;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class FireAspect {
@@ -32,10 +35,6 @@ public class FireAspect {
                             "fire_attack"
                     )
             ),
-            List.of(
-                    null,                    // slot 0 - Sleeper (none)
-                    new FireballAbility(),   // slot 1 - Awakened
-                    null                     // slot 2 - Ascended (not yet)
-            )
+            new ArrayList<>(Arrays.asList(null, new FireballAbility(), null))  // Allows null
     );
 }

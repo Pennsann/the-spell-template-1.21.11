@@ -7,6 +7,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.AABB;
 import ss.spellid.aspect.TickableAspectPower;
+import ss.spellid.party.PartyManager;
 import ss.spellid.ranks.Ranks;
 import ss.spellid.util.ScalingHelper;
 
@@ -42,7 +43,7 @@ public class PermafrostAuraPower implements TickableAspectPower {
         int amplifier = ScalingHelper.getScaledInt(player, SLOWNESS_AMP_BY_RANK, 0);
         AABB area = player.getBoundingBox().inflate(radius);
         List<LivingEntity> entities = player.level().getEntitiesOfClass(LivingEntity.class, area,
-                e -> e != player && e.isAlive() && !(e instanceof ServerPlayer));
+                e -> e != player && e.isAlive() && !(e instanceof ServerPlayer && PartyManager.isPartyMember(player, e)));
         for (LivingEntity target : entities) {
             target.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, 20, amplifier, false, false, true));
         }
