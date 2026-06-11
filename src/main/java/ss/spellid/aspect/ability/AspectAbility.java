@@ -2,6 +2,7 @@ package ss.spellid.aspect.ability;
 
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.resources.Identifier;
+import ss.spellid.ranks.Ranks;
 
 public interface AspectAbility {
     Identifier getId();
@@ -9,4 +10,5 @@ public interface AspectAbility {
     int getEssenceCost();           // essence cost per use
     boolean canUse(ServerPlayer player);  // optional extra checks (e.g., is in correct dimension)
     void use(ServerPlayer player);        // perform the ability
+    Ranks getRequiredRank();
 }

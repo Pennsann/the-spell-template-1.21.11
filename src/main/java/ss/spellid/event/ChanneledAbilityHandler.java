@@ -46,11 +46,9 @@ public class ChanneledAbilityHandler {
                 }
                 essence.addCurrentEssence(-channel.costPerTick);
 
-                if (channel.tickCounter >= channel.interval) {
+                if (++channel.tickCounter >= channel.interval) {
                     channel.tickCounter = 0;
                     channel.ability.onTick(player);
-                } else {
-                    channel.tickCounter++;
                 }
             }
         });

@@ -6,6 +6,7 @@ import net.minecraft.world.entity.projectile.hurtingprojectile.SmallFireball;
 import net.minecraft.world.phys.Vec3;
 import ss.spellid.TheSpell;
 import ss.spellid.aspect.ability.AspectAbility;
+import ss.spellid.ranks.Ranks;
 
 public class FireballAbility implements AspectAbility {
     private static final Identifier ID = Identifier.fromNamespaceAndPath(TheSpell.MOD_ID, "fireball");
@@ -31,6 +32,9 @@ public class FireballAbility implements AspectAbility {
     public boolean canUse(ServerPlayer player) {
         return true;
     }
+
+    @Override
+    public Ranks getRequiredRank() { return Ranks.AWAKENED; }
 
     @Override
     public void use(ServerPlayer player) {

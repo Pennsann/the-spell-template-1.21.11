@@ -20,8 +20,6 @@ public interface EssenceComponent extends Component {
     void setSaturationProgress(int value);
     int getSaturationMax();
     void absorbFragment(FragmentTier fragment);
-    Ranks getRank();
-    void setRank(Ranks newRank);
     boolean hasNightmareSeed();
     void setNightmareSeed(boolean hasSeed);
     void setAspectId(String aspectId);
@@ -42,9 +40,6 @@ public interface EssenceComponent extends Component {
     void setSleeperStartTime(long time);
     boolean isSentToDreamRealm();
     void setSentToDreamRealm(boolean sent);
-
-    long getLastAbilityUseTime();
-    void setLastAbilityUseTime(long time);
 
     // Melee ability pending
     void setPendingMeleeAbility(MeleeAttackAbility ability);

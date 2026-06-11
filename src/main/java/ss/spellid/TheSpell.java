@@ -96,11 +96,9 @@ public class TheSpell implements ModInitializer {
 	}
 
 	private void registerNetworkReceivers() {
-		// Register payloads
 		PayloadTypeRegistry.playC2S().register(ChannelStartPayload.TYPE, ChannelStartPayload.CODEC);
 		PayloadTypeRegistry.playC2S().register(ChannelStopPayload.TYPE, ChannelStopPayload.CODEC);
 
-		// Handle start payload for all slots (0,1,2)
 		ServerPlayNetworking.registerGlobalReceiver(ChannelStartPayload.TYPE, (payload, context) -> {
 			context.server().execute(() -> {
 				ServerPlayer player = context.player();
@@ -108,23 +106,13 @@ public class TheSpell implements ModInitializer {
 				var rankComp = RANK_KEY.get(player);
 				var essence = ESSENCE.get(player);
 
-				// Rank check
-				Ranks requiredRank;
-				switch (slot) {
-					case 0 -> requiredRank = Ranks.SLEEPER;
-					case 1 -> requiredRank = Ranks.AWAKENED;
-					case 2 -> requiredRank = Ranks.ASCENDED;
-					default -> {
-						player.displayClientMessage(Component.literal("§cInvalid ability slot!"), true);
-						return;
-					}
-				}
-
-				if (rankComp.getRank().ordinal() < requiredRank.ordinal()) {
-					player.displayClientMessage(Component.literal("§cYou need to be " + requiredRank.getDisplayName() + " to use this ability!"), true);
+				// Validate slot
+				if (slot < 0 || slot > 2) {
+					player.displayClientMessage(Component.literal("§cInvalid ability slot!"), true);
 					return;
 				}
 
+				// Get aspect
 				String aspectId = essence.getAspectId();
 				if (aspectId == null) {
 					player.displayClientMessage(Component.literal("§cYou have no aspect!"), true);
@@ -132,25 +120,34 @@ public class TheSpell implements ModInitializer {
 				}
 				Aspect aspect = Aspects.get(Identifier.parse(aspectId));
 				if (aspect == null) return;
+
+				// Get ability for slot
 				AspectAbility ability = aspect.getAbilityForSlot(slot);
 				if (ability == null) {
 					player.displayClientMessage(Component.literal("§cYour aspect has no ability for this slot!"), true);
 					return;
 				}
 
+				// Rank check from the ability itself
+				if (rankComp.getRank().ordinal() < ability.getRequiredRank().ordinal()) {
+					player.displayClientMessage(Component.literal("§cYou need to be " + ability.getRequiredRank().getDisplayName() + " to use this ability!"), true);
+					return;
+				}
+
 				// Decide based on ability type
 				if (ability instanceof ChanneledAbility channeled) {
-					// Start channel (if not already active)
 					if (!ChanneledAbilityHandler.startChannel(player, channeled)) {
 						player.displayClientMessage(Component.literal("§cCannot start channeled ability (cooldown or already active)!"), true);
 					}
 				} else {
-					// Single-use ability: execute once (with cooldown and essence checks)
+					// Per-ability cooldown check
 					long currentTime = player.level().getGameTime();
-					long lastUse = essence.getLastAbilityUseTime();
-					int cooldown = ability.getCooldownTicks();
-					if (cooldown > 0 && currentTime - lastUse < cooldown) {
-						player.displayClientMessage(Component.literal("§cAbility on cooldown!"), true);
+					String cooldownKey = "cooldown_" + ability.getId().toString();
+					long cooldownEnd = essence.getCustomLong(cooldownKey, 0L);
+
+					if (currentTime < cooldownEnd) {
+						long ticksLeft = cooldownEnd - currentTime;
+						player.displayClientMessage(Component.literal("§cAbility on cooldown! (" + (ticksLeft / 20) + "s)"), true);
 						return;
 					}
 
@@ -163,14 +160,13 @@ public class TheSpell implements ModInitializer {
 					if (ability.canUse(player)) {
 						ability.use(player);
 						essence.addCurrentEssence(-cost);
-						essence.setLastAbilityUseTime(currentTime);
+						essence.setCustomLong(cooldownKey, currentTime + ability.getCooldownTicks());
 						player.displayClientMessage(Component.literal("§aUsed " + ability.getId().getPath()), true);
 					}
 				}
 			});
 		});
 
-		// Handle stop payload – stops any active channel
 		ServerPlayNetworking.registerGlobalReceiver(ChannelStopPayload.TYPE, (payload, context) -> {
 			context.server().execute(() -> {
 				ServerPlayer player = context.player();
@@ -180,7 +176,7 @@ public class TheSpell implements ModInitializer {
 	}
 
 	private void registerCommands(com.mojang.brigadier.CommandDispatcher<net.minecraft.commands.CommandSourceStack> dispatcher) {
-		// Soul debug command
+		// Soul debug
 		dispatcher.register(Commands.literal("soul_debug")
 				.executes(context -> {
 					Player player = context.getSource().getPlayerOrException();
@@ -195,7 +191,7 @@ public class TheSpell implements ModInitializer {
 					return 1;
 				}));
 
-		// Nightmare exit command
+		// Nightmare exit
 		dispatcher.register(Commands.literal("nightmare_exit")
 				.executes(context -> {
 					Player player = context.getSource().getPlayerOrException();
@@ -279,7 +275,7 @@ public class TheSpell implements ModInitializer {
 											return 1;
 										})))));
 
-		// Debug commands: stats, regen, setrank, fillessence, test solstice
+		// Debug commands
 		dispatcher.register(Commands.literal("spell")
 				.then(Commands.literal("debug")
 						.then(Commands.literal("stats")
@@ -327,10 +323,9 @@ public class TheSpell implements ModInitializer {
 									essence.setCurrentEssence(max);
 									player.displayClientMessage(Component.literal("§aEssence filled to " + max + " / " + max), false);
 									return 1;
-								}))
-				));
+								}))));
 
-		// Test solstice command
+		// Test solstice
 		dispatcher.register(Commands.literal("spell")
 				.then(Commands.literal("test")
 						.then(Commands.literal("solstice")

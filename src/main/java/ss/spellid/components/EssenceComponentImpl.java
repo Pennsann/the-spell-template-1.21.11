@@ -30,7 +30,6 @@ public class EssenceComponentImpl implements EssenceComponent {
     private int currentEssence = 0;
     private int storedMicroPoints = 0;
     private int saturationProgress = 0;
-    private Ranks rank = Ranks.PLAYER;
     private boolean hasNightmareSeed = false;
     private String aspectId = null;
     private int regenTimer = 0;
@@ -42,8 +41,6 @@ public class EssenceComponentImpl implements EssenceComponent {
     private int anchorY = 0;
     private int anchorZ = 0;
     private boolean hasAnchor = false;
-
-    private long lastAbilityUseTime = 0;
 
     // Pending melee ability (transient – not saved)
     private transient MeleeAttackAbility pendingMeleeAbility = null;
@@ -137,12 +134,6 @@ public class EssenceComponentImpl implements EssenceComponent {
 
         updateSaturationModifiers();
     }
-
-    @Override
-    public Ranks getRank() { return rank; }
-
-    @Override
-    public void setRank(Ranks newRank) { this.rank = newRank != null ? newRank : Ranks.PLAYER; }
 
     @Override
     public boolean hasNightmareSeed() { return hasNightmareSeed; }
@@ -258,12 +249,6 @@ public class EssenceComponentImpl implements EssenceComponent {
         this.anchorZ = 0;
     }
 
-    @Override
-    public long getLastAbilityUseTime() { return lastAbilityUseTime; }
-
-    @Override
-    public void setLastAbilityUseTime(long time) { this.lastAbilityUseTime = time; }
-
     // Pending melee ability
     @Override
     public void setPendingMeleeAbility(MeleeAttackAbility ability) {
@@ -291,7 +276,6 @@ public class EssenceComponentImpl implements EssenceComponent {
         output.putInt("CurrentEssence", currentEssence);
         output.putInt("StoredMicroPoints", storedMicroPoints);
         output.putInt("SaturationProgress", saturationProgress);
-        output.putString("Rank", rank.name());
         output.putInt("NightmareSeed", hasNightmareSeed ? 1 : 0);
         if (aspectId != null) output.putString("AspectId", aspectId);
         output.putLong("SleeperStartTime", sleeperStartTime);
@@ -301,7 +285,6 @@ public class EssenceComponentImpl implements EssenceComponent {
         output.putInt("AnchorY", anchorY);
         output.putInt("AnchorZ", anchorZ);
         output.putInt("HasAnchor", hasAnchor ? 1 : 0);
-        output.putLong("LastAbilityUseTime", lastAbilityUseTime);
         // Note: pendingMeleeAbility not saved
     }
 
@@ -310,13 +293,6 @@ public class EssenceComponentImpl implements EssenceComponent {
         currentEssence = input.getInt("CurrentEssence").orElse(0);
         storedMicroPoints = input.getInt("StoredMicroPoints").orElse(0);
         saturationProgress = input.getInt("SaturationProgress").orElse(0);
-
-        String rankName = input.getString("Rank").orElse("");
-        try {
-            rank = Ranks.valueOf(rankName);
-        } catch (IllegalArgumentException e) {
-            rank = Ranks.PLAYER;
-        }
 
         hasNightmareSeed = input.getInt("NightmareSeed").orElse(0) != 0;
         aspectId = input.getString("AspectId").orElse(null);
@@ -328,7 +304,6 @@ public class EssenceComponentImpl implements EssenceComponent {
         anchorY = input.getInt("AnchorY").orElse(0);
         anchorZ = input.getInt("AnchorZ").orElse(0);
         hasAnchor = input.getInt("HasAnchor").orElse(0) != 0;
-        lastAbilityUseTime = input.getLong("LastAbilityUseTime").orElse(0L);
 
         // pendingMeleeAbility is reset to null – not loaded
 

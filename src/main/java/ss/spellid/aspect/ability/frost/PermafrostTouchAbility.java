@@ -57,6 +57,9 @@ public class PermafrostTouchAbility implements AspectAbility, MeleeAttackAbility
     }
 
     @Override
+    public Ranks getRequiredRank() { return Ranks.SLEEPER; }
+
+    @Override
     public void onMeleeHit(ServerPlayer player, LivingEntity target) {
         int bonusDamage = ScalingHelper.getScaledInt(player, DAMAGE_BY_RANK, 4);
         int slowDuration = ScalingHelper.getScaledInt(player, SLOW_DURATION_BY_RANK, 40);

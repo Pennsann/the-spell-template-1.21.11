@@ -16,4 +16,9 @@ public class ScalingHelper {
         Ranks rank = RankComponentInitializer.RANK_KEY.get(player).getRank();
         return rankToValue.getOrDefault(rank, defaultValue);
     }
+
+    public static float getScaledFloat(ServerPlayer player, Map<Ranks, Float> rankToValue, float defaultValue) {
+        Ranks rank = RankComponentInitializer.RANK_KEY.get(player).getRank();
+        return rankToValue.getOrDefault(rank, defaultValue);
+    }
 }

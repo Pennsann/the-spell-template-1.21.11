@@ -16,6 +16,7 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import ss.spellid.TheSpell;
 import ss.spellid.aspect.ability.ChanneledAbility;
+import ss.spellid.ranks.Ranks;
 import ss.spellid.util.FrostFlawHelper;
 import ss.spellid.block.ModBlocks;
 import ss.spellid.block.custom.IceSheetBlock;
@@ -73,6 +74,9 @@ public class FrigidTorrentAbility implements ChanneledAbility {
                 1.2f
         );
     }
+
+    @Override
+    public Ranks getRequiredRank() { return Ranks.AWAKENED; }
 
     @Override
     public void onTick(ServerPlayer player) {
