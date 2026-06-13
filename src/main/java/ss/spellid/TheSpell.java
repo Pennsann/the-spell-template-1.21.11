@@ -2,13 +2,16 @@ package ss.spellid;
 
 import com.mojang.brigadier.arguments.StringArgumentType;
 import net.fabricmc.api.ModInitializer;
+import net.minecraft.commands.arguments.EntityArgument;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.commands.Commands;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
@@ -16,6 +19,8 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.Level;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,6 +28,7 @@ import ss.spellid.aspect.Aspect;
 import ss.spellid.aspect.Aspects;
 import ss.spellid.aspect.ability.AspectAbility;
 import ss.spellid.aspect.ability.ChanneledAbility;
+import ss.spellid.block.ModBlockEntities;
 import ss.spellid.block.ModBlocks;
 import ss.spellid.components.RankComponentInitializer;
 import ss.spellid.dream.DreamRealmLoader;
@@ -31,6 +37,8 @@ import ss.spellid.event.*;
 import ss.spellid.item.ModItems;
 import ss.spellid.network.ChannelStartPayload;
 import ss.spellid.network.ChannelStopPayload;
+import ss.spellid.nightmare.Nightmare;
+import ss.spellid.nightmare.NightmareManager;
 import ss.spellid.party.Party;
 import ss.spellid.party.PartyManager;
 import ss.spellid.ranks.Ranks;
@@ -52,6 +60,7 @@ public class TheSpell implements ModInitializer {
 
 		ModItems.init();
 		ModBlocks.init();
+		ModBlockEntities.register();
 		ModEffects.register();
 		Aspects.init();
 
@@ -337,7 +346,7 @@ public class TheSpell implements ModInitializer {
 				.then(Commands.literal("create")
 						.executes(context -> {
 							ServerPlayer player = context.getSource().getPlayerOrException();
-							Party party = PartyManager.createParty(player, 4);
+							Party party = PartyManager.createParty(player, 5);
 							if (party == null) {
 								player.displayClientMessage(Component.literal("§cYou are already in a party or could not create one."), false);
 							} else {
@@ -346,25 +355,37 @@ public class TheSpell implements ModInitializer {
 							return 1;
 						}))
 				.then(Commands.literal("invite")
-						.then(Commands.argument("player", StringArgumentType.string())
+						.then(Commands.argument("target", StringArgumentType.word())
+								.suggests((context, builder) -> {
+									for (ServerPlayer p : context.getSource().getServer().getPlayerList().getPlayers()) {
+										builder.suggest(p.getName().getString());
+									}
+									return builder.buildFuture();
+								})
 								.executes(context -> {
 									ServerPlayer sender = context.getSource().getPlayerOrException();
-									String targetName = context.getArgument("player", String.class);
+									String targetName = context.getArgument("target", String.class);
 									ServerPlayer target = sender.level().getServer().getPlayerList().getPlayerByName(targetName);
 									if (target == null) {
 										sender.displayClientMessage(Component.literal("§cPlayer not found."), false);
 										return 0;
 									}
 									if (PartyManager.invitePlayer(sender, target)) {
-										sender.displayClientMessage(Component.literal("§aInvited " + targetName + " to your party."), false);
+										sender.displayClientMessage(Component.literal("§aInvited " + target.getName().getString() + " to your party."), false);
 										target.displayClientMessage(Component.literal("§6You have been invited to " + sender.getName().getString() + "'s party. Use §e/party join " + sender.getName().getString() + " §6to accept."), false);
 									} else {
-										sender.displayClientMessage(Component.literal("§cCould not invite player (maybe not leader or already in party)."), false);
+										sender.displayClientMessage(Component.literal("§cCould not invite player (maybe not leader, party full, or already in party)."), false);
 									}
 									return 1;
 								})))
 				.then(Commands.literal("join")
-						.then(Commands.argument("leader", StringArgumentType.string())
+						.then(Commands.argument("leader", StringArgumentType.word())
+								.suggests((context, builder) -> {
+									for (ServerPlayer p : context.getSource().getServer().getPlayerList().getPlayers()) {
+										builder.suggest(p.getName().getString());
+									}
+									return builder.buildFuture();
+								})
 								.executes(context -> {
 									ServerPlayer joiner = context.getSource().getPlayerOrException();
 									String leaderName = context.getArgument("leader", String.class);
@@ -385,13 +406,15 @@ public class TheSpell implements ModInitializer {
 									if (PartyManager.joinParty(joiner, party)) {
 										joiner.displayClientMessage(Component.literal("§aYou joined the party."), false);
 										for (UUID memberId : party.getMembers()) {
-											ServerPlayer member = joiner.level().getServer().getPlayerList().getPlayer(memberId);
-											if (member != null && !member.getUUID().equals(joiner.getUUID())) {
-												member.displayClientMessage(Component.literal("§e" + joiner.getName().getString() + " joined the party."), false);
+											if (!memberId.equals(joiner.getUUID())) {
+												ServerPlayer member = joiner.level().getServer().getPlayerList().getPlayer(memberId);
+												if (member != null) {
+													member.displayClientMessage(Component.literal("§e" + joiner.getName().getString() + " joined the party."), false);
+												}
 											}
 										}
 									} else {
-										joiner.displayClientMessage(Component.literal("§cCould not join party."), false);
+										joiner.displayClientMessage(Component.literal("§cCould not join party (maybe full or already in a party)."), false);
 									}
 									return 1;
 								})))
@@ -406,10 +429,22 @@ public class TheSpell implements ModInitializer {
 							return 1;
 						}))
 				.then(Commands.literal("kick")
-						.then(Commands.argument("player", StringArgumentType.string())
+						.then(Commands.argument("target", StringArgumentType.word())
+								.suggests((context, builder) -> {
+									Party party = PartyManager.getParty(context.getSource().getPlayerOrException());
+									if (party != null) {
+										for (UUID memberId : party.getMembers()) {
+											ServerPlayer member = context.getSource().getServer().getPlayerList().getPlayer(memberId);
+											if (member != null) {
+												builder.suggest(member.getName().getString());
+											}
+										}
+									}
+									return builder.buildFuture();
+								})
 								.executes(context -> {
 									ServerPlayer kicker = context.getSource().getPlayerOrException();
-									String targetName = context.getArgument("player", String.class);
+									String targetName = context.getArgument("target", String.class);
 									ServerPlayer target = kicker.level().getServer().getPlayerList().getPlayerByName(targetName);
 									if (target == null) {
 										kicker.displayClientMessage(Component.literal("§cPlayer not found."), false);
@@ -460,5 +495,32 @@ public class TheSpell implements ModInitializer {
 							return 1;
 						}))
 		);
+
+		// Nightmare seed command (for testing)
+		dispatcher.register(Commands.literal("nightmare_seed")
+				.then(Commands.argument("nightmare", StringArgumentType.greedyString())
+						.executes(context -> {
+							String idStr = context.getArgument("nightmare", String.class);
+							Identifier nightmareId;
+							try {
+								nightmareId = Identifier.parse(idStr);
+							} catch (Exception e) {
+								context.getSource().sendFailure(Component.literal("Invalid nightmare ID format! Use namespace:path"));
+								return 0;
+							}
+							Nightmare nightmare = NightmareManager.get(nightmareId);
+							if (nightmare == null) {
+								context.getSource().sendFailure(Component.literal("Nightmare not found!"));
+								return 0;
+							}
+							ServerPlayer player = context.getSource().getPlayerOrException();
+							ItemStack seedItem = new ItemStack(ModBlocks.NIGHTMARE_SEED.asItem());
+							CompoundTag tag = new CompoundTag();
+							tag.putString("nightmare_id", nightmareId.toString());
+							seedItem.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
+							player.getInventory().add(seedItem);
+							player.displayClientMessage(Component.literal("§aYou received a Nightmare Seed item for " + nightmare.displayName()), false);
+							return 1;
+						})));
 	}
 }

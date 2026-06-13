@@ -8,12 +8,14 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import ss.spellid.TheSpell;
 import ss.spellid.block.ModBlocks;
 import ss.spellid.item.custom.DormantFragment;
+import ss.spellid.item.custom.NightmareSeedItem;
 
 public class ModItems {
 

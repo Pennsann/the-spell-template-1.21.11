@@ -7,6 +7,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
 import ss.spellid.TheSpell;
 import ss.spellid.aspect.Aspects;
+import ss.spellid.ranks.Ranks;
 
 import java.util.HashMap;
 import java.util.List;
@@ -17,14 +18,15 @@ import java.util.stream.Collectors;
 public class NightmareManager {
     private static final Map<Identifier, Nightmare> REGISTRY = new HashMap<>();
 
-    // Define multiple First Nightmares with their own dimensions and aspects
+    // First Nightmares (entered via sleep)
     public static final Nightmare FLAMING_TRIAL = register(new Nightmare(
             Identifier.fromNamespaceAndPath(TheSpell.MOD_ID, "flaming_trial"),
             "Trial of Flames",
             Nightmare.EntryType.SLEEP,
             1, 1,
             ResourceKey.create(Registries.DIMENSION, Identifier.fromNamespaceAndPath(TheSpell.MOD_ID, "flaming_trial")),
-            Aspects.FIRE.getId() // Grant Fire Aspect
+            Aspects.FIRE.getId(),
+            Ranks.PLAYER, Ranks.PLAYER, Ranks.SLEEPER, 0.0
     ));
 
     public static final Nightmare FROZEN_TRIAL = register(new Nightmare(
@@ -33,7 +35,8 @@ public class NightmareManager {
             Nightmare.EntryType.SLEEP,
             1, 1,
             ResourceKey.create(Registries.DIMENSION, Identifier.fromNamespaceAndPath(TheSpell.MOD_ID, "frozen_trial")),
-            Aspects.SURVIVOR.getId() // Placeholder – replace with actual frost aspect later
+            Aspects.SURVIVOR.getId(),
+            Ranks.PLAYER, Ranks.PLAYER, Ranks.SLEEPER, 0.0
     ));
 
     public static final Nightmare SHADOW_TRIAL = register(new Nightmare(
@@ -42,17 +45,29 @@ public class NightmareManager {
             Nightmare.EntryType.SLEEP,
             1, 1,
             ResourceKey.create(Registries.DIMENSION, Identifier.fromNamespaceAndPath(TheSpell.MOD_ID, "shadow_trial")),
-            Aspects.SURVIVOR.getId() // Placeholder
+            Aspects.SURVIVOR.getId(),
+            Ranks.PLAYER, Ranks.PLAYER, Ranks.SLEEPER, 0.0
     ));
 
-    // Keep test nightmare for backward compatibility
     public static final Nightmare TEST_NIGHTMARE = register(new Nightmare(
             Identifier.fromNamespaceAndPath(TheSpell.MOD_ID, "test_nightmare"),
             "Test Nightmare",
             Nightmare.EntryType.SLEEP,
             1, 1,
             ResourceKey.create(Registries.DIMENSION, Identifier.fromNamespaceAndPath(TheSpell.MOD_ID, "first_nightmare")),
-            Aspects.SURVIVOR.getId()
+            Aspects.SURVIVOR.getId(),
+            Ranks.PLAYER, Ranks.PLAYER, Ranks.SLEEPER, 0.0
+    ));
+
+    // Second Nightmare (entered via seed block)
+    public static final Nightmare SECOND_NIGHTMARE = register(new Nightmare(
+            Identifier.fromNamespaceAndPath(TheSpell.MOD_ID, "second_nightmare"),
+            "The Fallen Citadel",
+            Nightmare.EntryType.SEED,
+            1, 5,
+            ResourceKey.create(Registries.DIMENSION, Identifier.fromNamespaceAndPath(TheSpell.MOD_ID, "second_nightmare")),
+            null,
+            Ranks.AWAKENED, Ranks.AWAKENED, Ranks.ASCENDED, 10.0
     ));
 
     private static Nightmare register(Nightmare nightmare) {
@@ -75,9 +90,7 @@ public class NightmareManager {
         List<Nightmare> uncompleted = getAllSolo().stream()
                 .filter(n -> !state.isCompleted(n.id()))
                 .collect(Collectors.toList());
-        if (uncompleted.isEmpty()) {
-            return null;
-        }
+        if (uncompleted.isEmpty()) return null;
         Random random = new Random();
         return uncompleted.get(random.nextInt(uncompleted.size())).id();
     }

@@ -3,6 +3,7 @@ package ss.spellid.nightmare;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
+import ss.spellid.ranks.Ranks;
 
 public record Nightmare(
         Identifier id,
@@ -11,10 +12,14 @@ public record Nightmare(
         int minPlayers,
         int maxPlayers,
         ResourceKey<Level> dimensionKey,
-        Identifier aspectId // New field: which aspect to grant
+        Identifier aspectId,
+        Ranks minRank,
+        Ranks maxRank,
+        Ranks rankUpTo,
+        double rewardBonus
 ) {
     public enum EntryType {
-        SLEEP,   // For First Nightmare (solo, entered by sleeping)
-        SEED     // For Second+ Nightmares (cohort, entered via seed block)
+        SLEEP,
+        SEED
     }
 }

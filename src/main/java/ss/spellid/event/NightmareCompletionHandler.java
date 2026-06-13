@@ -12,6 +12,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import ss.spellid.TheSpell;
 import ss.spellid.aspect.Aspects;
+import ss.spellid.block.custom.NightmareSeedBlock;
 import ss.spellid.components.RankComponentInitializer;
 import ss.spellid.components.NightmareInstance;
 import ss.spellid.effect.ModEffects;
@@ -40,7 +41,7 @@ public class NightmareCompletionHandler {
                 if (!player.level().dimension().equals(nightmare.dimensionKey())) continue;
 
                 var essence = ESSENCE.get(player);
-                if (!essence.hasNightmareSeed()) continue;
+                if (nightmare.entryType() == Nightmare.EntryType.SLEEP && !essence.hasNightmareSeed()) continue;
 
                 ServerLevel nightmareLevel = (ServerLevel) player.level();
                 BlockPos spawn = nightmareLevel.getRespawnData().pos();
@@ -56,46 +57,57 @@ public class NightmareCompletionHandler {
     }
 
     private static void completeNightmare(ServerPlayer player, Nightmare nightmare, NightmareInstance instance) {
-        if (instance.isCompleted()) {
-            return;
-        }
+        if (instance.isCompleted()) return;
 
         Identifier nightmareId = instance.getNightmareId();
-        if (nightmareId == null) {
-            return;
-        }
+        if (nightmareId == null) return;
 
         // Mark global completion
         NightmareManager.complete(nightmareId, player);
 
-        // Remove seed and effect
+        // Remove seed and effect (if any)
         var essence = ESSENCE.get(player);
         essence.setNightmareSeed(false);
         player.removeEffect(ModEffects.NIGHTMARE_SEED);
 
-        // Grant the aspect associated with this nightmare
-        essence.setAspectId(nightmare.aspectId().toString());
+        // Grant aspect if present
+        if (nightmare.aspectId() != null) {
+            essence.setAspectId(nightmare.aspectId().toString());
+        }
 
-        // Teleport back to overworld spawn
+        // Rank up if applicable
+        if (nightmare.rankUpTo() != null) {
+            var rankComp = RANK_KEY.get(player);
+            rankComp.setRank(nightmare.rankUpTo());
+            player.displayClientMessage(Component.literal("§dYou have advanced to " + nightmare.rankUpTo().getDisplayName() + "!"), false);
+        }
+
+        // Remove the seed block from the Dream Realm (if stored)
+        BlockPos seedPos = instance.getSeedPos();
+        ResourceKey<Level> seedDim = instance.getSeedDimension();
+        if (seedPos != null && seedDim != null) {
+            ServerLevel seedWorld = player.level().getServer().getLevel(seedDim);
+            if (seedWorld != null && seedWorld.getBlockState(seedPos).getBlock() instanceof NightmareSeedBlock) {
+                seedWorld.setBlock(seedPos, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), 3);
+                TheSpell.LOGGER.info("Removed nightmare seed at {} in {}", seedPos, seedDim.identifier());
+            }
+        }
+
+        // Teleport back to overworld spawn (or player's spawn? we'll keep overworld spawn for now)
         ServerLevel overworld = player.level().getServer().overworld();
         BlockPos spawn = overworld.getRespawnData().pos();
-        player.teleportTo(
-                overworld,
-                spawn.getX(), spawn.getY(), spawn.getZ(),
-                Set.of(),
-                player.getYRot(),
-                player.getXRot(),
-                false
-        );
-
-        // Promote to SLEEPER
-        var rankComp = RANK_KEY.get(player);
-        rankComp.setRank(Ranks.SLEEPER);
+        player.teleportTo(overworld, spawn.getX(), spawn.getY(), spawn.getZ(), Set.of(), player.getYRot(), player.getXRot(), false);
 
         // Clear nightmare instance data
         instance.setNightmareId(null);
         instance.setCompleted(true);
+        instance.setSeedPos(null);
+        instance.setSeedDimension(null);
 
-        player.displayClientMessage(Component.literal("§aYou have conquered the First Nightmare! You are now a Sleeper with the " + nightmare.displayName() + " aspect."), false);
+        // Message
+        String msg = nightmare.aspectId() != null ?
+                "§aYou have conquered the Nightmare! You are now a " + (nightmare.rankUpTo() != null ? nightmare.rankUpTo().getDisplayName() : "") + " with the " + nightmare.displayName() + " aspect." :
+                "§aYou have conquered the Nightmare! You are now a " + (nightmare.rankUpTo() != null ? nightmare.rankUpTo().getDisplayName() : "");
+        player.displayClientMessage(Component.literal(msg), false);
     }
 }

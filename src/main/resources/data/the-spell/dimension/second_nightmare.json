@@ -1,0 +1,20 @@
+{
+  "type": "the-spell:second_nightmare",
+  "generator": {
+    "type": "minecraft:flat",
+    "settings": {
+      "biome": "minecraft:the_void",
+      "layers": [
+        {
+          "block": "minecraft:bedrock",
+          "height": 1
+        },
+        {
+          "block": "minecraft:stone",
+          "height": 10
+        }
+      ],
+      "structure_overrides": []
+    }
+  }
+}
